@@ -1,0 +1,4 @@
+float4 EffectMain()
+{
+    return SAMPLE_MAIN_TEXTURE();
+}

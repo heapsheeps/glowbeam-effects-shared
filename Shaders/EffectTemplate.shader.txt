@@ -1,0 +1,85 @@
+Shader "LightformURP/Effects/MyEffect"
+
+{
+    Properties
+    {
+        // ==== USER PROPERTIES START ====
+
+        <DERIVED_USER_PROPERTIES_PLACEHOLDER>
+
+        // ==== USER PROPERTIES END ====
+
+        // Textures (can be empty)
+        _MainTex ("Content", 2D) = "white" {}
+        _ScanTex ("Scan Texture", 2D) = "white" {}
+        _DepthTex ("Depth Texture", 2D) = "black" {}
+        _RgbCartoonized ("RGB Cartoonized", 2D) = "white" {}
+        _EdgeDistance ("Edge Distance", 2D) = "white" {}
+        _EdgeTrace ("Edge Trace", 2D) = "white" {}
+        _Normals ("Normals", 2D) = "white" {}
+
+        // Masking elements
+        _MaskTex ("Mask (R, Linear)", 2D) = "white" {}
+        _StencilRef ("Stencil Ref", Int) = 0
+
+        // HSL / Colorize controls
+        _Opacity        ("Opacity",             Range(0,1))         = 1
+        _HueOffsetDeg   ("Hue Offset (deg)",    Range(-180,180))    = 0
+        _SatMul         ("Sat Multiplier",      Range(0,3))         = 1
+        _LightnessOff   ("Lightness Offset",    Range(-1,1))        = 0
+        [Toggle] _ColorizeOn ("Colorize (override Hue/Sat)", Float) = 0
+
+        // Fixed-function blend (choose per material)
+        [Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend("Src Blend", Int) = 5
+        [Enum(UnityEngine.Rendering.BlendMode)] _DstBlend("Dst Blend", Int) = 10
+        [Enum(UnityEngine.Rendering.BlendOp)]   _BlendOp ("Blend Op",   Int) = 0
+
+        // Advanced blend mode selector (used only when ADV_BLEND is enabled)
+        [KeywordEnum(None,0, Overlay,1, SoftLight,2, HardLight,3, ColorDodge,4, ColorBurn,5, LinearLight,6, VividLight,7, PinLight,8, HardMix,9, Difference,10, Exclusion,11)]
+        _AdvBlendMode ("Advanced Blend Mode", Float) = 0
+    }
+
+    SubShader
+    {
+        Tags { "RenderPipeline"="UniversalPipeline" "Queue"="Transparent" }
+        ZWrite Off
+        ZTest Always
+        Cull Off
+        BlendOp [_BlendOp]
+        Blend   [_SrcBlend] [_DstBlend]
+
+        HLSLINCLUDE
+
+        #pragma vertex Vert
+        #pragma fragment Frag
+        
+        // Feature toggles
+        // FEATHER_ENABLED  : soft mask sampling
+        #pragma multi_compile_local _ FEATHER_ENABLED
+        // HSL_ENABLED      : HSL / Colorize
+        #pragma multi_compile_local _ HSL_ENABLED
+        // ADV_BLEND        : scene-color sampling for mathy modes
+        #pragma multi_compile_local _ ADV_BLEND
+
+        #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+        #include "Packages/com.lightform.effects/ShaderLibrary/Core.hlsl"
+
+        ENDHLSL
+
+        Pass
+        {
+            Name "LightformEffect"
+            Stencil { Ref [_StencilRef] Comp Equal Pass Keep }
+
+            HLSLPROGRAM
+
+            // ==== USER CODE START ====
+            
+            <USER_CODE_PLACEHOLDER>
+
+            // ==== USER CODE END ====
+
+            ENDHLSL
+        }
+    }
+}
