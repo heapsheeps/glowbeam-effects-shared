@@ -7,7 +7,7 @@ using OpenCVForUnity.CoreModule;
 using OpenCVForUnity.ImgprocModule;
 using OpenCVForUnity.UnityIntegration;
 
-namespace Lightform.Effects
+namespace Glowbeam.Effects
 {
     /// <summary>
     /// Generates auxiliary images from scan textures for use in effects
@@ -53,20 +53,20 @@ namespace Lightform.Effects
         {
             if (scanTexture == null)
             {
-                UnityEngine.Debug.LogWarning("[Lightform Effect Editor] scan texture null, skipping auxiliary image generation.");
+                UnityEngine.Debug.LogWarning("[Glowbeam Effect Editor] scan texture null, skipping auxiliary image generation.");
                 return null;
             }
 
             if (depthTexture == null)
             {
-                UnityEngine.Debug.LogWarning("[Lightform Effect Editor] depth texture null, skipping auxiliary image generation.");
+                UnityEngine.Debug.LogWarning("[Glowbeam Effect Editor] depth texture null, skipping auxiliary image generation.");
                 return null;
             }
             
             // Check if OpenCVForUnity is available
             if (!_isOpenCVAvailable)
             {
-                UnityEngine.Debug.LogWarning("[Lightform Effects] OpenCV For Unity is not installed. Auxiliary images will not be generated. Falling back to simple implementations.");
+                UnityEngine.Debug.LogWarning("[Glowbeam Effects] OpenCV For Unity is not installed. Auxiliary images will not be generated. Falling back to simple implementations.");
                 return null;
             }
 
@@ -134,7 +134,7 @@ namespace Lightform.Effects
 
         /// <summary>
         /// Generates a cartoonized version of the scan texture (RGB, 8-bit)
-        /// Based on Lightform C++ implementation
+        /// Based on Glowbeam C++ implementation
         /// </summary>
         private Texture2D GenerateCartoonized(Texture2D scan, int width, int height)
         {

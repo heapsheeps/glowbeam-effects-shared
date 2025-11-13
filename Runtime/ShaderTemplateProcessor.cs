@@ -5,14 +5,14 @@ using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
 
-namespace Lightform.Effects
+namespace Glowbeam.Effects
 {
     /// <summary>
     /// Processes simplified shader code and generates full shader code from templates
     /// </summary>
     public static class ShaderTemplateProcessor
     {
-        private const string TEMPLATE_WITH_PLACEHOLDERS_PATH = "Packages/com.lightform.effects/Shaders/EffectTemplate.shader.txt";
+        private const string TEMPLATE_WITH_PLACEHOLDERS_PATH = "Packages/com.glowbeam.effects/Shaders/EffectTemplate.shader.txt";
         private const string DERIVED_PROPERTIES_PLACEHOLDER = "<DERIVED_USER_PROPERTIES_PLACEHOLDER>";
         private const string USER_CODE_PLACEHOLDER = "<USER_CODE_PLACEHOLDER>";
         private const string EFFECT_NAME_PLACEHOLDER = "MyEffect";

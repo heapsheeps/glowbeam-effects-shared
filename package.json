@@ -1,8 +1,8 @@
 {
-  "name": "com.lightform.effects",
+  "name": "com.glowbeam.effects",
   "version": "1.0.0",
-  "displayName": "Lightform Effects",
-  "description": "Core shader library and utilities for Lightform effects system. Provides HLSL shader library (Core.hlsl), shader template processor, and auxiliary image generation.",
+  "displayName": "Glowbeam Effects",
+  "description": "Core shader library and utilities for Glowbeam effects system. Provides HLSL shader library (Core.hlsl), shader template processor, and auxiliary image generation.",
   "unity": "2022.3",
   "dependencies": {
     "com.unity.render-pipelines.universal": "17.0.0"
@@ -11,12 +11,13 @@
     "shader",
     "effects",
     "projection mapping",
+    "glowbeam",
     "lightform",
     "hlsl",
     "urp"
   ],
   "author": {
-    "name": "Lightform",
+    "name": "Glowbeam",
     "url": "https://github.com/heapsheeps/glowbeam-unity-effect-editor"
   }
 }

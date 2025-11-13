@@ -1,4 +1,4 @@
-Shader "LightformURP/Effects/MyEffect"
+Shader "Glowbeam/Effects/MyEffect"
 
 {
     Properties
@@ -62,13 +62,13 @@ Shader "LightformURP/Effects/MyEffect"
         #pragma multi_compile_local _ ADV_BLEND
 
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-        #include "Packages/com.lightform.effects/ShaderLibrary/Core.hlsl"
+        #include "Packages/com.glowbeam.effects/ShaderLibrary/Core.hlsl"
 
         ENDHLSL
 
         Pass
         {
-            Name "LightformEffect"
+            Name "GlowbeamEffect"
             Stencil { Ref [_StencilRef] Comp Equal Pass Keep }
 
             HLSLPROGRAM

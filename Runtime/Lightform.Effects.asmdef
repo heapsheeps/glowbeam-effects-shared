@@ -1,6 +1,6 @@
 {
-  "name": "Lightform.Effects",
-  "rootNamespace": "Lightform.Effects",
+  "name": "Glowbeam.Effects",
+  "rootNamespace": "Glowbeam.Effects",
   "references": [
     "Unity.RenderPipelines.Universal.Runtime"
   ],

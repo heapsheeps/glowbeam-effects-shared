@@ -1,5 +1,5 @@
-#ifndef LIGHTFORM_CORE_INCLUDED
-#define LIGHTFORM_CORE_INCLUDED
+#ifndef GLOWBEAM_CORE_INCLUDED
+#define GLOWBEAM_CORE_INCLUDED
     
     struct Attributes
     {
