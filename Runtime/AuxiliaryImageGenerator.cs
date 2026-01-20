@@ -53,24 +53,24 @@ namespace Glowbeam.Effects
         {
             if (scanTexture == null)
             {
-                UnityEngine.Debug.LogWarning("[Glowbeam Effect Editor] scan texture null, skipping auxiliary image generation.");
+                UnityEngine.Debug.LogWarning("[AuxiliaryImageGenerator] scan texture null, skipping auxiliary image generation.");
                 return null;
             }
 
             if (depthTexture == null)
             {
-                UnityEngine.Debug.LogWarning("[Glowbeam Effect Editor] depth texture null, skipping auxiliary image generation.");
+                UnityEngine.Debug.LogWarning("[AuxiliaryImageGenerator] depth texture null, skipping auxiliary image generation.");
                 return null;
             }
             
             // Check if OpenCVForUnity is available
             if (!_isOpenCVAvailable)
             {
-                UnityEngine.Debug.LogWarning("[Glowbeam Effects] OpenCV For Unity is not installed. Auxiliary images will not be generated. Falling back to simple implementations.");
+                UnityEngine.Debug.LogWarning("[AuxiliaryImageGenerator] OpenCV For Unity is not installed. Auxiliary images will not be generated. Falling back to simple implementations.");
                 return null;
             }
 
-            UnityEngine.Debug.Log("[OpenCV] Starting auxiliary image generation...");
+            UnityEngine.Debug.Log("[AuxiliaryImageGenerator] Starting auxiliary image generation...");
 
             var aux = new AuxiliaryImages();
             
@@ -134,7 +134,7 @@ namespace Glowbeam.Effects
 
         /// <summary>
         /// Generates a cartoonized version of the scan texture (RGB, 8-bit)
-        /// Based on Glowbeam C++ implementation
+        /// Based on Lightform C++ implementation
         /// </summary>
         private Texture2D GenerateCartoonized(Texture2D scan, int width, int height)
         {
