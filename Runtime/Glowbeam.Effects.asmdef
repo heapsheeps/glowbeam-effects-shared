@@ -1,0 +1,17 @@
+{
+    "name": "Glowbeam.Effects",
+    "rootNamespace": "Glowbeam.Effects",
+    "references": [
+        "Unity.RenderPipelines.Universal.Runtime",
+        "EnoxSoftware.OpenCVForUnity"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

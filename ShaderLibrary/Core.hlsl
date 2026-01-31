@@ -17,8 +17,11 @@
     int _StencilRef;
     float4 _ScanTex_TexelSize;
     float2 _Resolution;
+    float _Expand;
+    float _Feather;
     float _Opacity;
     float _HueOffsetDeg, _SatMul, _LightnessOff, _ColorizeOn;
+    int _AdvBlendMode;
 
     // Common texture samplers for scan image and auxiliary images
     float2 GlobalUV; // aka frag coordinate in global screen space
@@ -43,6 +46,7 @@
     // Feature toggles (compile-time)
     #if defined(FEATHER_ENABLED)
         TEXTURE2D(_MaskTex); SAMPLER(sampler_MaskTex);
+        float SAMPLE_MASK() { return SAMPLE_TEXTURE2D(_MaskTex, sampler_MaskTex, GlobalUV).r; }
     #endif
 
     float4 _MainTex_ST;
@@ -55,8 +59,7 @@
     // Entry point for custom user shader
     float4 EffectMain();
 
-    float4 GLOWBEAM_FinalizeImpl(float4 c, float2 suv);
-    #define GLOWBEAM_FINALIZE(COLOR) GLOWBEAM_FinalizeImpl((COLOR), GlobalUV)
+    float4 Glowbeam_Finalize(float4 c);
 
     // Vertex and Fragment shaders
     Varyings Vert(Attributes v)
@@ -76,7 +79,7 @@
         #endif
 
         float4 effectColor = EffectMain();
-        return GLOWBEAM_FINALIZE(effectColor);
+        return Glowbeam_Finalize(effectColor);
     }
     
     // Constants -----------------------
@@ -374,11 +377,16 @@
 
 
     // ---------- Mask/feather (guarded by FEATHER_ENABLED) ----------
-    float4 Glowbeam_ApplyFeather(float4 c, float2 suv)
+    float4 Glowbeam_ApplyFeather(float4 c)
     {
-        #if defined(FEATHER_ENABLED)
-            float m = SAMPLE_TEXTURE2D(_MaskTex, sampler_MaskTex, suv).r;
-            clip(m - 1e-6);
+        #if defined(FEATHER_ENABLED) // Only set to true when _Feather > 0
+        // mask_edge will be between 0.25-0.75, since _Expand is in [-1,1]
+            float mask_edge = 0.5 - _Expand/4.0;
+            float m = SAMPLE_MASK();
+            // If feather = 1, then it feathers the mask between +-0.25 around the mask_edge
+            // So if the mask_edge is 0.5, it will feather between 0.25-0.75. 0.25 => 0-0.5.
+            // Feather values <1 will blend a smaller range linearly.
+            m = saturate((m-mask_edge) * 2.0 / _Feather + 0.5);
             c.a *= m;
         #endif
         return c;
@@ -555,25 +563,26 @@
         return dst + src - 2.0 * dst * src;
     }
 
-    float4 Glowbeam_ApplyAdvancedBlend(float4 c, float2 suv)
+    float4 Glowbeam_ApplyAdvancedBlend(float4 c)
     {
         #if defined(ADV_BLEND)
-            float3 dst = SAMPLE_TEXTURE2D_X(_CameraOpaqueTexture, sampler_CameraOpaqueTexture, suv).rgb;
+            float3 dst = SAMPLE_TEXTURE2D_X(_CameraOpaqueTexture, sampler_CameraOpaqueTexture, GlobalUV).rgb;
             float3 outRgb = c.rgb;
             
             switch (_AdvBlendMode)
             {
-                case 1:  outRgb = OverlayOp    (c.rgb, dst); break;
-                case 2:  outRgb = SoftLightOp  (c.rgb, dst); break;
-                case 3:  outRgb = HardLightOp  (c.rgb, dst); break;
-                case 4:  outRgb = ColorDodgeOp (c.rgb, dst); break;
-                case 5:  outRgb = ColorBurnOp  (c.rgb, dst); break;
-                case 6:  outRgb = LinearLightOp(c.rgb, dst); break;
-                case 7:  outRgb = VividLightOp (c.rgb, dst); break;
-                case 8:  outRgb = PinLightOp   (c.rgb, dst); break;
-                case 9:  outRgb = HardMixOp    (c.rgb, dst); break;
-                case 10: outRgb = DifferenceOp (c.rgb, dst); break;
-                case 11: outRgb = ExclusionOp  (c.rgb, dst); break;
+                // Indexes correspond to BlendMode.cs enum
+                case 6:  outRgb = OverlayOp    (c.rgb, dst); break;
+                case 7:  outRgb = SoftLightOp  (c.rgb, dst); break;
+                case 8:  outRgb = HardLightOp  (c.rgb, dst); break;
+                case 9:  outRgb = ColorDodgeOp (c.rgb, dst); break;
+                case 10: outRgb = ColorBurnOp  (c.rgb, dst); break;
+                case 11: outRgb = LinearLightOp(c.rgb, dst); break;
+                case 12: outRgb = VividLightOp (c.rgb, dst); break;
+                case 13: outRgb = PinLightOp   (c.rgb, dst); break;
+                case 14: outRgb = HardMixOp    (c.rgb, dst); break;
+                case 15: outRgb = DifferenceOp (c.rgb, dst); break;
+                case 16: outRgb = ExclusionOp  (c.rgb, dst); break;
                 default: break; // safety
             }
 
@@ -588,11 +597,11 @@
 
 
     // ---------- Finalize ----------
-    float4 GLOWBEAM_FinalizeImpl(float4 c, float2 suv)
+    float4 Glowbeam_Finalize(float4 c)
     {
-        c = Glowbeam_ApplyFeather(c, suv);
+        c = Glowbeam_ApplyFeather(c);
         c = Glowbeam_ApplyHSL(c);
-        c = Glowbeam_ApplyAdvancedBlend(c, suv);
+        c = Glowbeam_ApplyAdvancedBlend(c);
         c.a *= _Opacity;
         return c;
     }
