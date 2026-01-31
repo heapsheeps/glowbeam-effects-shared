@@ -1,0 +1,27 @@
+_Duration("Duration", Float) = 10.0
+_ColorStart("Color Start", Color) = (1.0, 1.0, 1.0, 1.0)
+_ColorEnd("Color End", Color) = (0.0, 0.0, 0.0, 0.0)
+_TransitionStart("Transition Start", Range(0.0, 1.0)) = 0.25
+_TransitionStop("Transition Stop", Range(0.0, 1.0)) = 0.75
+_PingPong("Ping Pong", Float) = 0
+_EaseInOut("Ease In Out", Float) = 0
+
+float4 EffectMain()
+{
+    float t = _Time.y / _Duration;
+
+    if(_PingPong > 0.5)
+    {
+        if(t > 0.5) t = 1.0 - t;
+        t *= 2.0;
+    }
+
+    float effectProgress = saturate((t - _TransitionStart) / (_TransitionStop - _TransitionStart));
+
+    if(_EaseInOut > 0.5)
+        effectProgress = smoothstep(0.0, 1.0, effectProgress);
+
+    float4 col = lerp(_ColorStart, _ColorEnd, effectProgress);
+
+    return float4(col.rgb, col.a);
+}

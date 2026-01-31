@@ -1,0 +1,16 @@
+_Duration("Duration", Float) = 10.0
+_PrimaryColor("Primary Color", Color) = (0.25, 0.25, 0.25, 1.0)
+_SecondaryColor("Secondary Color", Color) = (1.0, 1.0, 1.0, 1.0)
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+    float t = TWO_PI * _Time.y / _Duration;
+
+    float x_displacement_norm = 2.0 / _ScreenParams.x;
+    float edge_mask = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, float2(clamp(uv.x - x_displacement_norm, 0.0, 1.0), uv.y)).r;
+
+    float4 col = lerp(_PrimaryColor, _SecondaryColor, pow(sin(edge_mask + t), 20.0));
+
+    return col;
+}

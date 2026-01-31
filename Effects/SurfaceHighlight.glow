@@ -1,0 +1,60 @@
+_Duration("Duration", Float) = 10.0
+_Movement("Movement", Range(0.0, 1.0)) = 0.05
+_HighlightOffsetA("Highlight Offset A", Range(0.0, 1.0)) = 0.0
+_HighlightWidthA("Highlight Width A", Range(0.0, 1.0)) = 0.1
+_HighlightColorA("Highlight Color A", Color) = (1.0, 0.66666, 1.0, 1.0)
+_HighlightOffsetB("Highlight Offset B", Range(0.0, 1.0)) = 0.0
+_HighlightWidthB("Highlight Width B", Range(0.0, 1.0)) = 0.1
+_HighlightColorB("Highlight Color B", Color) = (1.0, 0.66666, 0.5, 1.0)
+_HighlightOffsetC("Highlight Offset C", Range(0.0, 1.0)) = 0.0
+_HighlightWidthC("Highlight Width C", Range(0.0, 1.0)) = 0.1
+_HighlightColorC("Highlight Color C", Color) = (0.333333, 1.0, 1.0, 1.0)
+
+float3 uncompressNormal(float3 normalCompressed)
+{
+    return normalize(float3(normalCompressed.xy * 2.0 - 1.0, normalCompressed.z));
+}
+
+float pulse(float t, float center, float width)
+{
+    return smoothstep(center - width, center, t) - smoothstep(center, center + width, t);
+}
+
+float4 EffectMain()
+{
+    float t = TWO_PI * _Time.y / _Duration;
+    float2 circle = 2.0 * _Movement * float2(sin(t), cos(t));
+
+    float aspect = _ScreenParams.x / _ScreenParams.y;
+    float2 uv = LocalUV;
+
+    float4 color = float4(0.0, 0.0, 0.0, 1.0);
+    float3 normal = uncompressNormal(SAMPLE_TEXTURE2D(_Normals, sampler_Normals, uv).rgb);
+    float2 YZ = float2(2.0 * _HighlightOffsetA - 1.0, 2.0 * _HighlightOffsetA - 1.0) + circle;
+    float2 XZ = float2(2.0 * _HighlightOffsetB - 1.0, 2.0 * _HighlightOffsetB - 1.0) + circle;
+    float2 XY = float2(2.0 * _HighlightOffsetC - 1.0, 2.0 * _HighlightOffsetC - 1.0) + circle;
+
+    YZ = normalize(YZ);
+    XZ = normalize(XZ);
+    XY = normalize(XY);
+
+    float3 X = float3(0.0, YZ);
+    float3 Y = float3(XZ.x, 0.0, XZ.y);
+    float3 Z = float3(XY, 0.0);
+
+    float3 dotp = abs(float3(
+        dot(normal, X),
+        dot(normal, Y),
+        dot(normal, Z)
+    ));
+
+    float st = 0.5 + 0.45 * sin(t);
+    color.rgb =
+        _HighlightColorA.rgb * pulse(dotp.r, st, _HighlightWidthA) +
+        _HighlightColorB.rgb * pulse(dotp.g, st, _HighlightWidthB) +
+        _HighlightColorC.rgb * pulse(dotp.b, st, _HighlightWidthC);
+
+    color.a = smoothstep(0.0, 3.0, (color.r + color.g + color.b));
+
+    return color;
+}

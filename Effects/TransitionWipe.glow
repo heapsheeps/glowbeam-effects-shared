@@ -1,0 +1,217 @@
+_Duration("Duration", Float) = 10.0
+_ColorStart("Color Start", Color) = (1.0, 1.0, 1.0, 1.0)
+_ColorEnd("Color End", Color) = (0.0, 0.0, 0.0, 0.0)
+_Type("Type", Int) = 0
+_TransitionStart("Transition Start", Range(0.0, 1.0)) = 0.25
+_TransitionStop("Transition Stop", Range(0.0, 1.0)) = 0.75
+_PingPong("Ping Pong", Float) = 0
+_EaseInOut("Ease In Out", Float) = 0
+_PixelResolution("Pixel Resolution", Range(0.0, 100.0)) = 0.0
+_RotationAngle("Rotation Angle", Range(0.0, 1.0)) = 0.0
+_RotationSpeed("Rotation Speed", Range(0.0, 1.0)) = 0.0
+_Antialiasing("Antialiasing", Range(0.0, 1.0)) = 0.1
+
+float SDF2D_circle(float2 position, float radius)
+{
+    return length(position) - radius;
+}
+
+float SDF2D_rectangle(float2 position, float2 halfSize)
+{
+    float2 componentWiseEdgeDistance = abs(position) - halfSize;
+    return max(componentWiseEdgeDistance.x, componentWiseEdgeDistance.y);
+}
+
+float SDF2D_star5(float2 p, float _r)
+{
+    float rf = 0.375;
+    float r = 2.7 * _r;
+    static const float2 k1 = float2(0.809016994375, -0.587785252292);
+    static const float2 k2 = float2(-k1.x, k1.y);
+    p.x = abs(p.x);
+    p -= 2.0 * max(dot(k1, p), 0.0) * k1;
+    p -= 2.0 * max(dot(k2, p), 0.0) * k2;
+    p.x = abs(p.x);
+    p.y -= r;
+    float2 ba = rf * float2(-k1.y, k1.x) - float2(0, 1);
+    float h = clamp(dot(p, ba) / dot(ba, ba), 0.0, r);
+    return length(p - ba * h) * sign(p.y * ba.x - p.x * ba.y);
+}
+
+float SDF2D_pie(float2 p, float angle)
+{
+    if(angle > PI) return -100.0;
+    if(angle < 0.0) return 100.0;
+
+    float2 c = float2(sin(angle), cos(angle));
+    p.x = abs(p.x);
+    float m = length(p - c * max(dot(p, c), 0.0));
+    return m * sign(c.y * p.x - c.x * p.y);
+}
+
+float SDF2D_hexagon(float2 p, float r)
+{
+    static const float3 k = float3(-0.866025404, 0.5, 0.577350269);
+    p = abs(p);
+    p -= 2.0 * min(dot(k.xy, p), 0.0) * k.xy;
+    p -= float2(clamp(p.x, -k.z * r, k.z * r), r);
+    return length(p) * sign(p.y);
+}
+
+float2 SDF2D_rotate(float2 p, float rotation)
+{
+    float angle = TWO_PI * rotation;
+    float sine = sin(angle);
+    float cosine = cos(angle);
+    return float2(cosine * p.x + sine * p.y, cosine * p.y - sine * p.x);
+}
+
+float ndot(float2 a, float2 b)
+{
+    return a.x * b.x - a.y * b.y;
+}
+
+float SDF2D_rhombus(float2 p, float2 b)
+{
+    float2 q = abs(p);
+
+    float h = clamp((-2.0 * ndot(q, b) + ndot(b, b)) / dot(b, b), -1.0, 1.0);
+    float d = length(q - 0.5 * b * float2(1.0 - h, 1.0 + h));
+    d *= sign(q.x * b.y + q.y * b.x - b.x * b.y);
+
+    return d;
+}
+
+float SDF2D_heart(float2 p, float radius)
+{
+    if(radius <= 0.0) return 1000.0;
+    float offset = 3.0 - 2.0 * sqrt(2.0);
+    float extra = 0.05;
+    float2 center = float2(0.0, offset + extra);
+    float r = 1.0 - center.y;
+
+    float2 _p = (p / radius) * r + center;
+
+    float d = SDF2D_rhombus(_p, float2(1.0, 1.0));
+    d = min(SDF2D_circle(_p - float2(0.5, 0.5), sqrt(2.0) / 2.0), d);
+    d = min(SDF2D_circle(_p - float2(-0.5, 0.5), sqrt(2.0) / 2.0), d);
+    if(_p.y < 0.0) d += 1.5 * abs(_p.x) * abs(_p.y) * abs(_p.y) * r * r;
+
+    return d * radius / r;
+}
+
+float4 EffectMain()
+{
+    float t = _Time.y / _Duration;
+
+    if(_PingPong > 0.5)
+    {
+        if(t > 0.5) t = 1.0 - t;
+        t *= 2.0;
+    }
+
+    float effectProgress = saturate((t - _TransitionStart) / (_TransitionStop - _TransitionStart));
+
+    if(_EaseInOut > 0.5)
+        effectProgress = smoothstep(0.0, 1.0, effectProgress);
+
+    float2 uv = GlobalUV;
+    float2 center = float2(0.5, 0.5);
+    uv -= center;
+
+    float aspect = _ScreenParams.x / _ScreenParams.y;
+    uv.x *= aspect;
+
+    float shapeBorderWidth = _Antialiasing * 0.03;
+
+    if(_PixelResolution != 0.0)
+    {
+        uv = floor(uv * _PixelResolution + 0.5) / _PixelResolution;
+        uv.x = clamp(uv.x, -aspect * 0.4999, aspect * 0.4999);
+        uv.y = clamp(uv.y, -0.4999, 0.4999);
+    }
+
+    float _rotationAngle = (_Type == 5 || _Type == 7) ? (_RotationAngle + 0.75) : _RotationAngle;
+    float angle = effectProgress * _RotationSpeed + _rotationAngle;
+    float endAngle = _RotationSpeed + _rotationAngle;
+
+    uv = SDF2D_rotate(uv, angle);
+
+    float cea = cos(TWO_PI * endAngle);
+    float sea = sin(TWO_PI * endAngle);
+    float squareFix = max(abs(aspect * cea + sea), abs(aspect * cea - sea)) - 1.0;
+
+    float aspectFix = 0.5 * sqrt(2.0 + 2.0 * aspect * aspect);
+
+    float start = 0.0;
+    float end = 1.0 + shapeBorderWidth;
+
+    if(_Type <= 3)
+    {
+        end += shapeBorderWidth;
+    }
+    else if(_Type <= 5)
+    {
+        start -= 0.5 * squareFix;
+        end += 0.5 * squareFix;
+    }
+    else if(_Type <= 7)
+    {
+        start -= 0.5 * squareFix;
+        end += 1.01 * shapeBorderWidth;
+    }
+    else if(_Type == 9)
+    {
+        end += shapeBorderWidth;
+    }
+
+    float T = start + (end - start) * effectProgress;
+
+    float size = max(T / 2.0, 0.0);
+    float radius = aspectFix * size / length(float2(0.5, 0.5));
+
+    float distance = 0.0;
+    if(_Type == 0)
+    {
+        distance = SDF2D_circle(uv, radius);
+    }
+    else if(_Type == 1)
+    {
+        distance = SDF2D_rectangle(uv, float2(radius, radius));
+    }
+    else if(_Type == 2)
+    {
+        distance = SDF2D_hexagon(uv, radius);
+    }
+    else if(_Type == 3)
+    {
+        distance = SDF2D_star5(uv, radius);
+    }
+    else if(_Type <= 5)
+    {
+        distance = uv.x - (T - 0.5);
+    }
+    else if(_Type <= 7)
+    {
+        float split = (1.0 - T) / 2.0;
+        distance = -max(uv.x - split, -uv.x - split);
+    }
+    else if(_Type == 8)
+    {
+        distance = SDF2D_pie(uv, PI * T);
+    }
+    else if(_Type == 9)
+    {
+        distance = SDF2D_heart(uv, radius);
+        shapeBorderWidth *= effectProgress;
+    }
+
+    float texelIntensity = smoothstep(-shapeBorderWidth, 0.0, distance);
+
+    if(effectProgress == 0.0) texelIntensity = 1.0;
+    if(effectProgress == 1.0) texelIntensity = 0.0;
+
+    float4 col = lerp(_ColorStart, _ColorEnd, 1.0 - texelIntensity);
+
+    return float4(col.rgb / col.a, col.a);
+}

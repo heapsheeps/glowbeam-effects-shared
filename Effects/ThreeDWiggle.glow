@@ -1,0 +1,46 @@
+_Duration("Duration", Float) = 10.0
+_EdgeLength("Edge Length", Range(0.0, 1.0)) = 1.0
+_EdgeWidth("Edge Width", Range(0.0, 1.0)) = 0.4
+_WiggleIntensity("Wiggle Intensity", Range(0.0, 1.0)) = 0.66
+_StaticLineColor("Static Line Color", Color) = (0.2, 0.1, 0.8, 1.0)
+_WiggleLineColor("Wiggle Line Color", Color) = (0.9, 0.3, 0.1, 1.0)
+
+float4 EffectMain()
+{
+    float t = TWO_PI * _Time.y / _Duration;
+
+    // Set up uv coordinate system
+    float aspect = _ScreenParams.x / _ScreenParams.y;
+    float2 uv = LocalUV;
+
+    // Apply distortion noise to uv coordinate system
+    float normalStart = sin(t);
+    float2 position = 0.5 - uv;
+    float2 uvDistort = float2(position.x, position.y / aspect);
+    uvDistort.x += 0.1 * cos(10.0 * uvDistort.y + t);
+    uvDistort.y += 0.1 * sin(10.0 * uvDistort.x + t);
+    uvDistort *= normalStart;
+
+    // Sample edges input image based on both uv coordinate systems
+    float sampleDistance = 2.0 + 50.0 * (1.0 - _WiggleIntensity);
+    uvDistort /= sampleDistance;
+    float2 wiggleLocation = float2(uv.x - uvDistort.x, uv.y - uvDistort.y);
+
+    float2 edgeStatic = SAMPLE_TEXTURE2D(_EdgeTrace, sampler_EdgeTrace, uv).rg;
+    float2 edgeWiggle = SAMPLE_TEXTURE2D(_EdgeTrace, sampler_EdgeTrace, wiggleLocation).rg;
+
+    float distStatic = edgeStatic.g;
+    float distWiggle = edgeWiggle.g;
+
+    float edgesStatic = LF_isInEdge(distStatic, _EdgeWidth) ? edgeStatic.r : 0.0;
+    float edgesWiggle = LF_isInEdge(distWiggle, _EdgeWidth) ? edgeWiggle.r : 0.0;
+
+    if(edgesStatic > _EdgeLength) edgesStatic = 0.0;
+    if(edgesWiggle > _EdgeLength) edgesWiggle = 0.0;
+
+    // Final color
+    float4 color = _StaticLineColor * edgesStatic + _WiggleLineColor * edgesWiggle;
+    color.a *= smoothstep(0.0, 0.2, edgesStatic + edgesWiggle);
+
+    return color;
+}

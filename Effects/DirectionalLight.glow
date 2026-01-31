@@ -1,0 +1,54 @@
+_Duration("Duration", Float) = 10.0
+_Diffuse("Diffuse", Range(0.0, 1.0)) = 1.0
+_Specular("Specular", Range(0.0, 1.0)) = 0.2
+_Shininess("Shininess", Range(0.0, 1.0)) = 0.5
+_LightDirection("Light Direction", Vector) = (0.5, 0.5, 0, 0)
+_ViewerDirection("Viewer Direction", Vector) = (0.5, 0.5, 0, 0)
+_UseColor("Use Color", Float) = 1
+_AnimateLight("Animate Light", Float) = 1
+
+float getLoopingTimeValue()
+{
+    float t = TWO_PI * _Time.y / _Duration;
+    return (sin(t) + 1.0) / 2.0;
+}
+
+float2 getAnimatedLightDirection()
+{
+    float v = getLoopingTimeValue();
+    return float2(0.8 * v + 0.1, 0.2 * v + 0.4);
+}
+
+float3 directionFromPoint(float2 pt)
+{
+    // Assume pt is in [0,1]^2, and map it to [-1,1]^2
+    float2 xy = pt * 2.0 - 1.0;
+    float z = sqrt(1.0 - min(length(xy), 1.0));
+    return normalize(float3(xy, z));
+}
+
+float3 uncompressNormal(float3 normalCompressed)
+{
+    return normalize(float3(normalCompressed.xy * 2.0 - 1.0, normalCompressed.z));
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+
+    float3 normal = uncompressNormal(SAMPLE_TEXTURE2D(_Normals, sampler_Normals, uv).rgb);
+
+    float3 light = directionFromPoint(_AnimateLight > 0.5 ? getAnimatedLightDirection() : _LightDirection.xy);
+    float3 viewer = directionFromPoint(_ViewerDirection.xy);
+
+    float shininessValue = _Shininess * 99.0 + 1.0;
+    float diffuseComponent = max(dot(light, normal), 0.0);
+    float3 halfVector = normalize(light + viewer);
+    float specularAngle = max(dot(halfVector, normal), 0.0);
+    float specularComponent = pow(specularAngle, shininessValue);
+
+    float3 color = _UseColor > 0.5 ? SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv).rgb : float3(1.0, 1.0, 1.0);
+    float3 shaded = _Diffuse * diffuseComponent * color + _Specular * specularComponent;
+
+    return float4(shaded, 1.0);
+}

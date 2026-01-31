@@ -1,0 +1,57 @@
+_Duration("Duration", Float) = 10.0
+_EdgeLength("Edge Length", Range(0.0, 1.0)) = 1.0
+_EdgeWidth("Edge Width", Range(0.0, 1.0)) = 0.4
+_StripeBanding("Stripe Banding", Range(0.0, 1.0)) = 0.25
+_DotBanding("Dot Banding", Range(0.0, 1.0)) = 0.65
+_Blending("Blending", Range(0.0, 1.0)) = 0.25
+_DotMovement("Dot Movement", Range(0.0, 1.0)) = 0.75
+_StripeGrowth("Stripe Growth", Range(0.0, 1.0)) = 0.5
+_StripeTechnicolor("Stripe Technicolor", Range(0.0, 1.0)) = 0.0
+_DotTechnicolor("Dot Technicolor", Range(0.0, 1.0)) = 0.0
+_DotColor("Dot Color", Color) = (0.0, 0.0, 1.0, 1.0)
+_StripeColor("Stripe Color", Color) = (1.0, 0.0, 0.0, 1.0)
+
+float3 technicolorPalette(float t, float3 d)
+{
+    return 0.5 + 0.5 * cos(6.28318 * (1.0 * t + d));
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+    float t = TWO_PI * _Time.y / _Duration;
+    float commonFactor = 20.0;
+    t /= commonFactor;
+
+    float bandingStripes = commonFactor * floor((0.1 + _StripeBanding) * 10.0);
+    float bandingDots = commonFactor * floor((0.1 + _DotBanding) * 10.0);
+    float dotDirection = floor((_DotMovement - 0.5) * 8.0);
+
+    float dist = SAMPLE_TEXTURE2D(_EdgeDistance, sampler_EdgeDistance, uv).r;
+    float2 traceRG = SAMPLE_TEXTURE2D(_EdgeTrace, sampler_EdgeTrace, uv).rg;
+    float distTrace = traceRG.g;
+    bool isInEdge = LF_isInEdge(distTrace, _EdgeWidth);
+    dist += 0.0039;
+    float gammaValue = 1.0 - _StripeGrowth;
+    float dist2 = pow(dist, gammaValue);
+
+    float stripes = sin((dist2 - t) * bandingStripes) * 0.5 + 0.5;
+
+    float dotsOG = traceRG.r;
+    float dots = dotsOG < _EdgeLength ? dotsOG : 0.0;
+    dots = isInEdge ? dots : 0.0;
+    float dotsFilt = smoothstep(0.025, _Blending, dots);
+    dots = sin((dots + t * dotDirection) * bandingDots) * 0.5 + 0.5;
+    dots *= dotsFilt;
+
+    stripes = stripes * (1.0 - dotsFilt);
+
+    float3 dotsColorRainbow = technicolorPalette(dotsOG + sin(t * commonFactor), float3(0.0, 0.33, 0.67));
+    float4 dotsColor = lerp(_DotColor, float4(dotsColorRainbow, 1.0), _DotTechnicolor);
+    float3 stripesColorRainbow = technicolorPalette(dist + sin(t * commonFactor), float3(0.0, 0.33, 0.67));
+    float4 stripesColor = lerp(_StripeColor, float4(stripesColorRainbow, 1.0), _StripeTechnicolor);
+
+    float4 finalColor = dotsColor * dots + stripesColor * stripes;
+
+    return finalColor;
+}

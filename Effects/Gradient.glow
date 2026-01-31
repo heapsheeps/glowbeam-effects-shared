@@ -1,0 +1,35 @@
+_Duration("Duration", Float) = 10.0
+_ColorBegin("Color Begin", Color) = (1.0, 0.0, 1.0, 1.0)
+_ColorEnd("Color End", Color) = (0.0, 1.0, 1.0, 1.0)
+_PositionBegin("Position Begin", Vector) = (0.3, 0.3, 0, 0)
+_PositionEnd("Position End", Vector) = (0.7, 0.7, 0, 0)
+_Radial("Radial", Float) = 0
+_Animate("Animate", Float) = 0
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+    float2 direction = _PositionEnd.xy - _PositionBegin.xy;
+
+    float t;
+    if(_Radial > 0.5)
+    {
+        t = dot(uv - _PositionBegin.xy, uv - _PositionBegin.xy) / dot(direction, direction);
+    }
+    else
+    {
+        float directionDotDirection = dot(direction, direction);
+        float2 uvProjected = _PositionBegin.xy + dot(uv - _PositionBegin.xy, direction) / directionDotDirection * direction;
+        t = dot(direction, uvProjected - _PositionBegin.xy) / directionDotDirection;
+    }
+
+    if(_Animate > 0.5) {
+        t = abs(2.0 * frac(0.5 * t + _Time.y / _Duration) - 1.0);
+    }
+
+    t = saturate(t);
+
+    float4 result = lerp(_ColorBegin, _ColorEnd, t);
+
+    return result;
+}

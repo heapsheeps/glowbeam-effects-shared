@@ -1,0 +1,33 @@
+_Duration("Duration", Float) = 10.0
+_HueSaturationPicker("Hue Saturation Picker", Vector) = (0.5, 0.5, 0, 0)
+_HueRadius("Hue Radius", Range(0.0, 0.5)) = 0.25
+_SaturationRadius("Saturation Radius", Range(0.0, 0.5)) = 0.25
+_Animation("Animation", Range(0.0, 1.0)) = 1.0
+_ColorValue("Color Value", Color) = (1.0, 1.0, 1.0, 1.0)
+_UseColor("Use Color", Float) = 1
+
+float isInRange(float x, float minValue, float maxValue)
+{
+    return step(minValue, x) - step(maxValue, x);
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+
+    float3 toon = SAMPLE_TEXTURE2D(_RgbCartoonized, sampler_RgbCartoonized, uv).rgb;
+
+    float3 hsv = rgbToHsv(toon);
+
+    float t = TWO_PI * _Time.y / _Duration;
+
+    float2 hueSaturation = _HueSaturationPicker.xy + _Animation * float2(cos(t), sin(t * 2.0)) / 2.0;
+
+    float4 color = _UseColor > 0.5 ? _ColorValue : float4(toon, 1.0);
+
+    color.rgb *=
+        isInRange(hsv.x, hueSaturation.x - _HueRadius, hueSaturation.x + _HueRadius) *
+        isInRange(hsv.y, hueSaturation.y - _SaturationRadius, hueSaturation.y + _SaturationRadius);
+
+    return color;
+}

@@ -1,0 +1,43 @@
+_Duration("Duration", Float) = 10.0
+_ColorBackground("Color Background", Color) = (0.0, 0.0, 0.0, 1.0)
+_ColorArcs("Color Arcs", Color) = (1.0, 1.0, 1.0, 1.0)
+_GridSize("Grid Size", Range(1.0, 40.0)) = 5.0
+_SpeedSpin("Speed Spin", Range(0.0, 10.0)) = 1.0
+_SpeedArc("Speed Arc", Range(0.0, 10.0)) = 1.0
+_Radius("Radius", Range(0.0, 1.0)) = 0.5
+_Width("Width", Range(0.0, 1.0)) = 0.5
+
+float rand(float x)
+{
+    return frac(sin(x) * 100000.0);
+}
+
+// sca is the sin/cos of the orientation
+// scb is the sin/cos of the aperture
+float sdArc(float2 p, float2 sca, float2 scb, float ra, float rb)
+{
+    p = mul(float2x2(sca.x, sca.y, -sca.y, sca.x), p);
+    p.x = abs(p.x);
+    float k = (scb.y * p.x > scb.x * p.y) ? dot(p.xy, scb) : length(p.xy);
+    return sqrt(dot(p, p) + ra * ra - 2.0 * ra * k) - rb;
+}
+
+float4 EffectMain()
+{
+    float2 uv = (2.0 * GlobalUV * _ScreenParams.xy - _ScreenParams.xy) / _ScreenParams.y;
+    float t = TWO_PI * _Time.y / _Duration;
+
+    float2 p = uv;
+    float2 local = frac((p * _GridSize)) - 0.5;
+    float2 cb = floor((p * _GridSize));
+
+    float rand1 = TWO_PI * rand(_GridSize * cb.y + cb.x);
+    float rand2 = PI * rand(rand1);
+    float rand3 = TWO_PI * rand(rand1);
+    float ta = PI * (1.0 + sin(round(_SpeedSpin) * t + rand1)) + rand3;
+    float tb = 0.5 * PI * (1.0 + sin(round(_SpeedArc) * t + rand2));
+    float len = sdArc(local, float2(sin(ta), cos(ta)), float2(sin(tb), cos(tb)), (0.5 * _Radius + 0.5) * 0.25, 0.1 * _Width + 0.01);
+
+    float4 col = lerp(_ColorBackground, _ColorArcs, 1.0 - smoothstep(0.0, 0.02, len));
+    return col;
+}

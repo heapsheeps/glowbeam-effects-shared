@@ -1,0 +1,66 @@
+_Duration("Duration", Float) = 10.0
+_UseBackground("Use Background", Float) = 1
+_Boomerang("Boomerang", Float) = 0
+_Color("Color", Color) = (1.0, 0.4, 0.2, 1.0)
+_Width("Width", Range(0.0, 1.0)) = 0.4
+_Center("Center", Vector) = (0.5, 0.5, 0, 0)
+
+float snoise(float3 uv, float res)
+{
+    static const float3 s = float3(1e0, 1e2, 1e3);
+
+    uv *= res;
+
+    float3 uv0 = floor(fmod(uv, res)) * s;
+    float3 uv1 = floor(fmod(uv + float3(1.0, 1.0, 1.0), res)) * s;
+
+    float3 f = frac(uv);
+    f = f * f * (3.0 - 2.0 * f);
+
+    float4 v = float4(uv0.x + uv0.y + uv0.z, uv1.x + uv0.y + uv0.z,
+                    uv0.x + uv1.y + uv0.z, uv1.x + uv1.y + uv0.z);
+
+    float4 r = frac(sin(v * 1e-1) * 1e3);
+    float r0 = lerp(lerp(r.x, r.y, f.x), lerp(r.z, r.w, f.x), f.y);
+
+    r = frac(sin((v + uv1.z - uv0.z) * 1e-1) * 1e3);
+    float r1 = lerp(lerp(r.x, r.y, f.x), lerp(r.z, r.w, f.x), f.y);
+
+    return lerp(r0, r1, f.z) * 2.0 - 1.0;
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+    float edgeDistance = SAMPLE_TEXTURE2D(_EdgeDistance, sampler_EdgeDistance, uv).r;
+    float4 background = float4(0.0, 0.0, 0.0, 0.0);
+    if(_UseBackground > 0.5)
+        background = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv);
+
+    float t = frac(_Time.y / _Duration);
+    if(_Boomerang > 0.5)
+        t = 1.0 - 4.0 * pow(t - 0.5, 2.0);
+
+    float w = (1.0 - _Width) * 40.0 + 5.0;
+    float ed = pow(edgeDistance, 1.0 / 2.0);
+    float s = 1.0 / (1.0 + pow(2.71828, w * (t - ed)));
+
+    float4 result;
+    if(0.1 < s && s < 0.9)
+    {
+        float c = 3.0 - (3.0 * length(uv - _Center.xy));
+        for(int i = 1; i <= 7; i++)
+        {
+            float power = pow(2.0, float(i));
+            c += (1.5 / power) * snoise(float3(uv, 1.0) + float3(0.0, -t * 0.5, t * 0.1), power * 16.0);
+        }
+        result = _Color * pow(max(c, 0.0), 2.0);
+    }
+    else if(s >= 0.9)
+    {
+        result = background;
+    }
+    result.a = s * s * s;
+
+    return result;
+}

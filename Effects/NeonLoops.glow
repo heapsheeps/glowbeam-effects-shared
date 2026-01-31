@@ -1,0 +1,43 @@
+_Duration("Duration", Float) = 10.0
+_LoopWiggle("Loop Wiggle", Range(0.0, 1.0)) = 0.0
+_LoopColor("Loop Color", Color) = (0.2, 0.1, 0.4, 1.0)
+_Center("Center", Vector) = (0.5, 0.5, 0, 0)
+
+float circ(float2 p)
+{
+    float r = length(p);
+    r = log(sqrt(r));
+    return abs(fmod(r * 4.0, TWO_PI) - PI) * 3.0 + 0.2;
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+
+    // sample disparity map
+    float disparity = 1.0 - SAMPLE_TEXTURE2D(_DepthTex, sampler_DepthTex, uv).r;
+
+    // set up input parameters
+    float t = TWO_PI * _Time.y / _Duration * 0.05;
+
+    // set up uv coordinate system
+    float2 p = uv - _Center.xy;
+    p.x *= _ScreenParams.x / _ScreenParams.y;
+    p *= 4.0;
+
+    // warp uv coordinate system
+    float warp = _LoopWiggle / 5.0;
+    p.x += warp * cos(10.0 * p.y + 0.5 * t);
+    p.y += warp * sin(10.0 * p.x + 0.5 * t);
+
+    // create loops
+    p /= exp(fmod(t * 10.0, PI));
+    disparity *= pow(abs(0.1 - circ(p)), 0.9);
+
+    // final color
+    float3 col = _LoopColor.xyz / disparity;
+    col = pow(abs(col), float3(0.99, 0.99, 0.99));
+
+    float alpha = smoothstep(0.0, 0.16, adobeLum(col));
+    return float4(col, alpha * _LoopColor.a);
+}

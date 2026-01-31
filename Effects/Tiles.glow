@@ -1,0 +1,89 @@
+_Duration("Duration", Float) = 10.0
+_Seed("Seed", Range(0.0, 1.0)) = 0.5
+_Sharpness("Sharpness", Range(0.0, 1.0)) = 0.98
+_Movement("Movement", Range(0.0, 1.0)) = 0.5
+_Warping("Warping", Range(0.0, 3.0)) = 0.5
+_Divisions("Divisions", Range(3, 10)) = 5
+_Type("Type", Int) = 1
+_Center("Center", Vector) = (0.5, 0.5, 0, 0)
+
+static const float3 a = float3(0.5, 0.5, 0.5);
+static const float3 b = float3(0.5, 0.5, 0.5);
+static const float3 c = float3(1.0, 1.0, 1.0);
+float3 d;
+float t;
+
+float rand(float n)
+{
+    return frac(sin(n) * (43758.5453123 + 100.0 * _Seed));
+}
+
+float leftOf(float2 a_pt, float2 b_pt, float2 p, float time)
+{
+    float2 e0 = b_pt - a_pt;
+    float2 v0 = p - a_pt;
+    float2 pq0 = v0 - e0 * (dot(v0, e0) / dot(e0, e0));
+    float2 d_pt = float2(dot(pq0, pq0), (v0.x * e0.y - v0.y * e0.x));
+
+    float dist = -sqrt(d_pt.x) * sign(d_pt.y);
+
+    float edge = lerp(0.2, 0.005, _Sharpness);
+    return 2.0 * smoothstep(-edge, edge, dist + _Movement * sin(time + _Warping * dot(p, p))) - 1.0;
+}
+
+float4 palette(float T, float3 a_pal, float3 b_pal, float3 c_pal, float3 d_pal)
+{
+    return float4(a_pal + b_pal * cos(6.28318 * (c_pal * T + d_pal)), 1.0);
+}
+
+float4 color(float z)
+{
+    return palette(z / 5.0, a, b, c, d);
+}
+
+float4 EffectMain()
+{
+    t = TWO_PI * _Time.y / _Duration;
+
+    d.x = rand(0.1111);
+    d.y = d.x + 0.25 * rand(0.55);
+    d.z = d.y + 0.25 * rand(0.77777);
+
+    float aspect = _ScreenParams.x / _ScreenParams.y;
+    float2 uv = (2.0 * GlobalUV * _ScreenParams.xy - _ScreenParams.xy) / _ScreenParams.y;
+    uv -= (2.0 * _Center.xy - 1.0) * float2(aspect, 1.0);
+
+    int divisions = int(_Divisions);
+    float c_val = 0.0;
+    float d_val = 1.0;
+    for(int i = 0; i < divisions; ++i)
+    {
+        float fi = 0.777777 * float(i);
+        float2 a_pt = float2(rand(3.0 * fi), rand(3.0 * fi + 111.111));
+        float angle = TWO_PI * rand(4.0 * fi + 222.222);
+        float z = sign(fmod(fi, 2.0) - 0.5);
+        float2 b_pt = a_pt;
+        if(_Type == 0)
+            b_pt += float2(sin(angle), cos(angle));
+        else if(_Type == 1)
+            b_pt += float2(z, sqrt(3.0));
+        else
+            b_pt += float2(z, ((i % 3) == 0) ? 0.0 : sqrt(3.0));
+
+        c_val += d_val * leftOf(a_pt, b_pt, uv, t);
+
+        a_pt.y = -a_pt.y;
+        b_pt.y = -b_pt.y;
+        c_val += d_val * leftOf(b_pt, a_pt, uv, t);
+
+        a_pt.x = -a_pt.x;
+        b_pt.x = -b_pt.x;
+        c_val += d_val * leftOf(a_pt, b_pt, uv, t);
+
+        a_pt.y = -a_pt.y;
+        b_pt.y = -b_pt.y;
+        c_val += d_val * leftOf(b_pt, a_pt, uv, t);
+    }
+
+    return color(c_val);
+}

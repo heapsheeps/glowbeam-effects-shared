@@ -1,0 +1,27 @@
+_Duration("Duration", Float) = 10.0
+_EdgeColor("Edge Color", Vector) = (0.9, 0.8, 0, 0)
+_EdgeWidth("Edge Width", Range(0.0, 1.0)) = 0.2
+_LightSpan("Light Span", Range(0.0, 1.0)) = 0.3
+_Slope("Slope", Range(0.0, 1.0)) = 0.5
+
+float4 EffectMain()
+{
+    // unnormalize variables
+    float lightSpan_remapped = lerp(0.1, 0.3, _LightSpan);
+    float slope_remapped = 3.0 + 4.0 * _Slope;
+
+    float2 uv = LocalUV;
+    float2 edge_trace = SAMPLE_TEXTURE2D(_EdgeTrace, sampler_EdgeTrace, uv).rg;
+    float edge_distance = edge_trace.g;
+
+    float t = fmod(_Time.y / _Duration, 1.0);
+    t = lerp(-0.5, 1.5, t);
+    t += uv.y / slope_remapped;
+    float s = smoothstep(uv.x - lightSpan_remapped, uv.x, t) - smoothstep(uv.x, uv.x + lightSpan_remapped, t);
+
+    float4 black = float4(0.0, 0.0, 0.0, 0.0);
+    float4 color = float4(hsv2rgb(float3(_EdgeColor.xy, 1.0)), 1.0);
+    float4 result = (edge_trace.r > 0.0 && LF_isInEdge(edge_distance, _EdgeWidth)) ? color : black;
+
+    return s * result;
+}

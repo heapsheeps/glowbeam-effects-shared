@@ -1,0 +1,46 @@
+_Duration("Duration", Float) = 10.0
+_Sharpness("Sharpness", Range(0.0, 1.0)) = 0.2
+_Reverse("Reverse", Float) = 0
+_Split("Split", Float) = 1
+_Center("Center", Vector) = (0.5, 0.5, 0, 0)
+_Spread("Spread", Range(0.0, 1.0)) = 0.75
+_Color("Color", Color) = (1.0, 1.0, 1.0, 1.0)
+_Strength("Strength", Range(0.0, 1.0)) = 0.5
+_BeamMultiplier("Beam Multiplier", Range(1.0, 20.0)) = 1.0
+
+float2x2 rotate2d(float _angle)
+{
+    return float2x2(cos(_angle), -sin(_angle), sin(_angle), cos(_angle));
+}
+
+float adjustedValue(float x, float2 range)
+{
+    return range.x + (range.y - range.x) * x;
+}
+
+float4 EffectMain()
+{
+    float2 strengthRange = float2(1.0, 3.0);
+    float2 spreadRange = float2(1.0, 200.0);
+
+    float2 uv = GlobalUV * _ScreenParams.xy / _ScreenParams.xx;
+    uv -= float2(_Center.x, _Center.y * _ScreenParams.y / _ScreenParams.x);
+
+    float2 beamOrigin = float2(0.0, 0.0);
+
+    float t = TWO_PI * _Time.y / _Duration;
+    uv = mul(rotate2d((_Reverse > 0.5 ? 1.0 : -1.0) * t), uv);
+
+    float2 vectorToOrigin = uv - beamOrigin;
+    float angleToOrigin = atan(vectorToOrigin.y / vectorToOrigin.x);
+
+    float angleDegrees = (floor(_BeamMultiplier) * degrees(angleToOrigin) / 90.0);
+    angleDegrees = fmod(floor(fmod(angleDegrees, 2.0)), 2.0) == 0.0 ? frac(angleDegrees) : 1.0 - frac(angleDegrees);
+    angleDegrees = adjustedValue(1.0 - _Spread, spreadRange) * pow(angleDegrees, adjustedValue(_Strength, strengthRange));
+    angleDegrees = min(max(angleDegrees - _Sharpness, 0.0), 1.0);
+    if(_Split > 0.5) if(vectorToOrigin.x < 0.0) angleDegrees = 1.0;
+
+    float4 beamPos = lerp(float4(0.0, 0.0, 0.0, 0.0), float4(1.0, 1.0, 1.0, 1.0), 1.0 - angleDegrees);
+    float4 beamColorFinal = beamPos * _Color;
+    return beamColorFinal;
+}

@@ -1,0 +1,32 @@
+_Duration("Duration", Float) = 10.0
+_Color("Color", Color) = (1.0, 1.0, 1.0, 1.0)
+_Width("Width", Range(0.0, 1.0)) = 0.4
+_Spread("Spread", Range(0.0, 1.0)) = 0.5
+_Amplitude("Amplitude", Range(0.01, 1.0)) = 0.5
+_Center("Center", Vector) = (0.5, 0.5, 0, 0)
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+    float2 center = _Center.xy;
+
+    float t = TWO_PI * _Time.y / _Duration;
+
+    float2 p = (2.0 * (uv - center));
+    p.y *= _ScreenParams.y / _ScreenParams.x;
+    float r = length(p) + 0.001;
+    float spread_remapped = (1.0 - _Spread) * 100.0;
+    float s2 = sin(r * 40.0 + sin(t)) / (1.0 + spread_remapped * r);
+
+    float amplitude_remapped = pow(10.0, 1.0 + 2.0 * (1.0 - _Amplitude));
+
+    p /= length(p);
+    float2 ripple_uv = uv + -s2 / amplitude_remapped * p / r;
+
+    float edgeDistance = SAMPLE_TEXTURE2D(_EdgeDistance, sampler_EdgeDistance, ripple_uv).r;
+
+    float es = edgeDistance * ((1.0 - _Width) * 500.0 + 10.0);
+    float v = saturate(1.0 - es * es);
+
+    return v * _Color;
+}

@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e720c10f16ece45c784740227554c0f9, type: 3}
+  m_Name: ColorFlood
+  m_EditorClassIdentifier: 
+  scanTex: {fileID: 2800000, guid: 39ed5b0adb3e64ed3b13f40822a70601, type: 3}
+  depthTex: {fileID: 2800000, guid: a2bed23e68ebc4337a5217f3d12fb929, type: 3}
+  previewZoom: 1
+  previewPan: {x: 0, y: 0}
+  effectName: ColorFlood
+  lastShaderPath: Packages/com.glowbeam.effects/Effects/ColorFlood.glow
+  selectedTabIndex: 0
+  showDepthOverlay: 0
+  currentCode: "_Duration(\"Duration\", Float) = 10.0\n_UseDisparity(\"Use Disparity\",
+    Float) = 0\n_PrimaryHue(\"Primary Hue\", Range(0.0, 1.0)) = 0.6\n_PrimarySaturation(\"Primary
+    Saturation\", Range(0.0, 1.0)) = 0.7\n_SecondaryHue(\"Secondary Hue\", Range(0.0,
+    1.0)) = 0.9\n_SecondarySaturation(\"Secondary Saturation\", Range(0.0, 1.0))
+    = 0.8\n\nfloat getLoopingTimeValue()\n{\n    float t = _Time.y * TWO_PI / _Duration;\n   
+    return (sin(t) + 1.0);\n}\n\nfloat2 getLoopingTimeValueWithUv(float2 uv)\n{\n   
+    float t = _Time.y * TWO_PI / _Duration;\n    return (sin(t + uv) + 1.0);\n}\n\nfloat4
+    EffectMain()\n{\n    float2 uv = LocalUV;\n\n    float t = getLoopingTimeValue();\n   
+    float2 t_uv = getLoopingTimeValueWithUv(uv);\n\n    float3 primaryColorActual
+    = hsv2rgb(float3(_PrimaryHue, _PrimarySaturation, 1.0));\n    float3 secondaryColorActual
+    = hsv2rgb(float3(_SecondaryHue, _SecondarySaturation, 1.0));\n\n    float3 primaryColorMix
+    = lerp(primaryColorActual, secondaryColorActual, t_uv.y);\n    float3 secondaryColorMix
+    = lerp(secondaryColorActual, primaryColorActual, t_uv.x);\n\n    float mask;\n   
+    if(_UseDisparity > 0.5)\n    {\n        mask = SAMPLE_TEXTURE2D(_DepthTex, sampler_DepthTex,
+    uv).r;\n    }\n    else\n    {\n        float3 image = SAMPLE_TEXTURE2D(_RgbCartoonized,
+    sampler_RgbCartoonized, uv).rgb;\n        mask = (image.r + image.g + image.b)
+    / 3.0;\n    }\n\n    float useFg = step(t, mask - EPSILON);\n    float3 result
+    = lerp(secondaryColorMix, primaryColorMix, useFg);\n    return float4(result,
+    1.0);\n}"

@@ -1,0 +1,96 @@
+_Duration("Duration", Float) = 10.0
+_DarkMode("Dark Mode", Float) = 1
+_SphereSize("Sphere Size", Range(0.0, 1.0)) = 0.2
+_LightXAngle("Light X Angle", Range(0.0, 1.0)) = 0.5
+_LightYAngle("Light Y Angle", Range(0.0, 1.0)) = 0.5
+_LightZAngle("Light Z Angle", Range(0.0, 1.0)) = 1.0
+
+// Sphere Intersection
+float sphIntersect(float3 ro, float3 rd, float4 sph)
+{
+    float3 oc = ro - sph.xyz;
+    float b = dot(oc, rd);
+    float c = dot(oc, oc) - sph.w * sph.w;
+    float h = b * b - c;
+    if(h < 0.0) return -1.0;
+    return -b - sqrt(h);
+}
+
+// Sphere Occlusion
+float sphOcclusion(float3 pos, float3 nor, float4 sph)
+{
+    float3 di = sph.xyz - pos;
+    float l = length(di);
+    float nl = dot(nor, di / l);
+    float h = l / sph.w;
+    float h2 = h * h;
+    float k2 = 1.0 - h2 * nl * nl;
+
+    float res = max(0.0, nl) / h2;
+
+    if(k2 > 0.0)
+    {
+        // cheap approximation: Quilez
+        res = pow(saturate(0.5 * (nl * h + 1.0) / h2), 1.5);
+    }
+
+    return res;
+}
+
+// Plane Intersection
+float iPlane(float3 ro, float3 rd)
+{
+    return (-1.0 - ro.z) / rd.z;
+}
+
+float4 EffectMain()
+{
+    // set up uv coordinate system
+    float2 p = (2.0 * GlobalUV * _ScreenParams.xy - _ScreenParams.xy) / _ScreenParams.y;
+    float t = TWO_PI * _Time.y / _Duration;
+
+    float planeYHeight = 0.0;
+    float3 ro = float3(0.0, 0.0 - planeYHeight, 4.0);
+    float3 rd = normalize(float3(p, -2.0));
+
+    // light direction
+    float3 lightDirection = float3((_LightXAngle - 0.5) * 2.0, (_LightYAngle - 0.5) * 2.0, (_LightZAngle - 0.5) * 2.0);
+
+    // sphere animation
+    float sphereRadius = 2.0 * _SphereSize;
+    float3 spherePosition = cos(t + float3(2.0, 1.0, 0.0) + 1.0) * float3(1.3, 1.0, -2.3);
+
+    float4 sph = float4(spherePosition, sphereRadius);
+
+    float3 col;
+
+    float tmin = 1e10;
+
+    float t1 = iPlane(ro, rd);
+
+    // if pixel intersects the plane, calculate the sphere shadow/emission
+    if(t1 > 0.0)
+    {
+        tmin = t1;
+        float3 pos = ro + tmin * rd;
+        float3 nor = lightDirection;
+        float occ = sphOcclusion(pos, nor, sph);
+        col = float3(lerp(1.0 - occ, occ * 5.0, _DarkMode), lerp(1.0 - occ, occ * 5.0, _DarkMode), lerp(1.0 - occ, occ * 5.0, _DarkMode));
+    }
+
+    // if pixel intersects the sphere, calculate reflected light
+    float t2 = sphIntersect(ro, rd, sph);
+    if(t2 > 0.0 && t2 < tmin)
+    {
+        tmin = t2;
+        float t = t2;
+        float3 pos = ro + t * rd;
+        float3 nor = normalize(pos - sph.xyz);
+        col = float3(1.2, 1.2, 1.2);
+        col *= 0.5 + 0.4 * nor.x * lightDirection.x + 0.4 * nor.y * lightDirection.y + 0.4 * nor.z * lightDirection.z;
+    }
+
+    col *= exp(-0.05 * tmin);
+
+    return float4(col, 1.0);
+}

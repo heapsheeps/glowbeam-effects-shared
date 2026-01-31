@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e720c10f16ece45c784740227554c0f9, type: 3}
+  m_Name: MyEffect
+  m_EditorClassIdentifier: 
+  scanTex: {fileID: 2800000, guid: 724d47c43187d4f2284ca6b7e3b46c2f, type: 3}
+  depthTex: {fileID: 2800000, guid: 867430bc1f22d4d778b742cfe7834761, type: 3}
+  previewZoom: 1
+  previewPan: {x: 0, y: 0}
+  effectName: MyEffect
+  lastShaderPath: Packages/com.glowbeam.effects/Effects/MyEffect.glow
+  selectedTabIndex: 0
+  showDepthOverlay: 0
+  currentCode: "\n_Intensity (\"Intensity\", Range(0,5)) = 1\n_Color (\"Color\",
+    Color) = (1,0.6,0.8,1)\n\nfloat4 EffectMain()\n{\n    float luma = dot(SAMPLE_SCAN().rgb,
+    float3(0.2126, 0.7152, 0.0722));\n    float ripple = sin(LocalUV.y * 20 + _Time.y
+    * 2) * 0.03;\n    float3 col = lerp(float3(0,0,0), _Color.rgb, luma) + ripple
+    * _Intensity;\n    return float4(saturate(col), 1);\n}\n\n"

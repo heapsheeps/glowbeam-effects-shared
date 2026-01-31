@@ -1,0 +1,41 @@
+_Duration("Duration", Float) = 10.0
+_Speed("Speed", Range(0.0, 1.0)) = 0.3
+_Oscillations("Oscillations", Range(0.0, 1.0)) = 0.1
+_Start("Start", Range(0.0, 1.0)) = 0.7
+_Vertical("Vertical", Float) = 0
+_FoldShadow("Fold Shadow", Range(0.0, 1.0)) = 0.5
+
+float saw(float rads)
+{
+    rads += HALF_PI; // sync oscillation up with sin()
+    float percent = fmod(rads, PI) / PI;
+    float dir = sign(sin(rads));
+    return dir * (2.0 * percent - 1.0);
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+
+    float t = TWO_PI * _Time.y / _Duration;
+    float freq = ((_Oscillations + 0.5) * 20.0) + (10.0 * _Speed * sin(t));
+    float amp = 0.1 + 0.1 * sin(t);
+
+    int direction = int(_Vertical);
+
+    float increaseOsc = smoothstep(0.0, 1.0, (uv[direction] + _Start) * 0.5); // more oscillations to the right
+    float yOsc = saw(HALF_PI + increaseOsc * freq);
+    float yOscOffset = saw(PI + increaseOsc * freq);
+    float yAdd = amp * (increaseOsc + increaseOsc * yOsc);
+
+    float2 offset1 = float2(0.0, yAdd * (0.5 + 0.5 * cos(uv.x)));
+    float2 offset2 = -float2(yAdd * (0.5 + 0.5 * cos(uv[direction])), 0.0);
+    uv += lerp(offset1, offset2, _Vertical);
+
+    float3 result = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv).rgb;
+
+    float fold = -uv[direction] * (3.0 * _FoldShadow) * amp;
+    result += lerp(0.0, fold, step(0.0, yOscOffset));
+
+    return float4(result, 1.0);
+}

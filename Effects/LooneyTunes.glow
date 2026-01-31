@@ -1,0 +1,49 @@
+_Duration("Duration", Float) = 10.0
+_ShadowMix("Shadow Mix", Range(0.0, 1.0)) = 0.3
+_UseDisparity("Use Disparity", Float) = 1
+_NumberOfStripes("Number Of Stripes", Range(1.0, 64.0)) = 16.0
+_Center("Center", Vector) = (0.5, 0.5, 0, 0)
+
+float3 gilmoreCol(float x, float s)
+{
+    s = floor((1.0 - s) * _NumberOfStripes) / _NumberOfStripes;
+
+    float h = (x + s) / 2.0;
+    float b = abs(x - s);
+
+    float hue = frac((1.0 - h) - 0.45);
+    float sat = 0.3 + sin(x * PI) * 0.5;
+    float bri = (smoothstep(0.0, 0.6, b) - smoothstep(0.6, 1.0, b)) * 0.6 + 0.3;
+    bri *= 0.85;
+
+    return float3(hue, sat, bri);
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+    float2 aspect = float2(1.0, _ScreenParams.y / _ScreenParams.x);
+
+    // set up input parameters
+    float t = _Time.y / _Duration;
+
+    // create rings
+    float2 p = (uv - _Center.xy) * aspect;
+    float x = _NumberOfStripes * distance(p, float2(0.0, 0.0));
+    x = frac(x + t);
+
+    float s1 = SAMPLE_TEXTURE2D(_DepthTex, sampler_DepthTex, uv).r;
+    float s2 = SAMPLE_TEXTURE2D(_RgbCartoonized, sampler_RgbCartoonized, uv).r;
+    float s = _UseDisparity > 0.5 ? s1 : s2;
+
+    float3 hsv = gilmoreCol(x, s);
+
+    // create stripes and add the fake shadows
+    float stripes = 1.0 - x;
+    hsv.z = lerp(hsv.z, stripes, _ShadowMix);
+
+    // final color
+    float3 color = hsv2rgb(hsv);
+    float alpha = 1.0;
+    return float4(color, alpha);
+}

@@ -1,0 +1,90 @@
+_Duration("Duration", Float) = 10.0
+_Intensity("Intensity", Range(0.0, 100.0)) = 25.0
+_Size("Size", Range(0.0, 0.5)) = 0.2
+_Animate("Animate", Float) = 1
+_Position("Position", Range(0.0, 1.0)) = 0.5
+_Colorize("Colorize", Range(0.0, 1.0)) = 0.0
+_Center("Center", Vector) = (0.5, 0.5, 0, 0)
+
+float gray(float4 n)
+{
+    return (n.r + n.g + n.b) / 3.0;
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+    float2 mod_center = _Center.xy;
+    float4 color = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv);
+    float curPos;
+
+    float dist = distance(uv, mod_center);
+
+    if(_Animate > 0.5)
+        curPos = PI * _Time.y / _Duration;
+    else 
+        curPos = _Position;
+
+    float pos = _Size / 2.0 + abs(sin(curPos)) * 0.35 - (_Size / 4.0);
+    float adjustedTime = (pos * _ScreenParams.x / _ScreenParams.y - _Size) / (1.0 - _Size);
+
+    if ((dist <= (adjustedTime + _Size)) && (dist >= (adjustedTime - _Size)))
+    {
+        float diff = (1.0 - abs(adjustedTime - dist) / _Size);
+
+        float4 colorL = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv + float2(-1.0, 0.0) / _ScreenParams.xy);
+        float4 colorR = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv + float2( 1.0, 0.0) / _ScreenParams.xy);
+        float4 colorA = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv + float2(0.0, -1.0) / _ScreenParams.xy);
+        float4 colorB = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv + float2(0.0,  1.0) / _ScreenParams.xy);
+
+        float4 colorLA = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv + float2(-1.0, -1.0) / _ScreenParams.xy);
+        float4 colorRA = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv + float2( 1.0, -1.0) / _ScreenParams.xy);
+        float4 colorLB = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv + float2(-1.0,  1.0) / _ScreenParams.xy);
+        float4 colorRB = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv + float2( 1.0,  1.0) / _ScreenParams.xy);
+
+        float gx = 0.0;
+        float gy = 0.0;
+
+        gx = (-1.0 * gray(colorLA)) + (-1.0 * gray(colorL)) + (-1.0 * gray(colorLB)) + (1.0 * gray(colorRA)) + (1.0 * gray(colorR)) + (1.0 * gray(colorRB));
+        gy = (1.0 * gray(colorLA)) + (1.0 * gray(colorA)) + (1.0 * gray(colorRA)) + (-1.0 * gray(colorRB)) + (-1.0 * gray(colorB)) + (-1.0 * gray(colorLB));
+
+        float bright = pow(gx * gx + gy * gy, 0.5);
+        float4 final = color * bright;
+
+        final = (final * _Intensity) * diff;
+        final.a = 1.0;
+
+        color = final;
+    }
+    else
+    {
+        color = float4(0.0, 0.0, 0.0, 1.0);
+    }
+
+    float brightLevel = (color.r + color.b + color.g) / 3.0;
+
+    if (brightLevel < 0.5)
+        brightLevel = 1.0;
+    else
+        brightLevel = 0.0;
+
+    color = lerp(color, float4(0.0, 0.0, 0.0, 1.0), brightLevel);
+
+    if(_Colorize > 0.0) 
+    {
+        float4 redrecord = color * float4(1.0, 0.01, 0.0, 1.0);
+        float4 bluegreenrecord = color * float4(0.0, 1.0, 0.7, 1.0);
+        float4 rednegative = float4(redrecord.r, redrecord.r, redrecord.r, redrecord.r);
+        float4 bluegreennegative = float4((bluegreenrecord.g + bluegreenrecord.b) / 2.0, (bluegreenrecord.g + bluegreenrecord.b) / 2.0, (bluegreenrecord.g + bluegreenrecord.b) / 2.0, (bluegreenrecord.g + bluegreenrecord.b) / 2.0);
+
+        float4 redoutput = rednegative * float4(1.0, 0.01, 0.0, 1.0);
+        float4 bluegreenoutput = bluegreennegative * float4(0.0, 1.0, 0.7, 1.0);
+
+        // additive 'projection'
+        float4 result = redoutput + bluegreenoutput;
+
+        color = lerp(color, result, _Colorize);
+    }
+
+    return color;
+}

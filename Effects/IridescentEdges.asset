@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e720c10f16ece45c784740227554c0f9, type: 3}
+  m_Name: IridescentEdges
+  m_EditorClassIdentifier: 
+  scanTex: {fileID: 2800000, guid: 39ed5b0adb3e64ed3b13f40822a70601, type: 3}
+  depthTex: {fileID: 2800000, guid: a2bed23e68ebc4337a5217f3d12fb929, type: 3}
+  previewZoom: 1
+  previewPan: {x: 0, y: 0}
+  effectName: IridescentEdges
+  lastShaderPath: Packages/com.glowbeam.effects/Effects/IridescentEdges.glow
+  selectedTabIndex: 0
+  showDepthOverlay: 0
+  currentCode: "_Duration(\"Duration\", Float) = 10.0\n_AllowDynamicMovement(\"Allow
+    Dynamic Movement\", Float) = 0\n_EdgeLength(\"Edge Length\", Range(0.0, 1.0))
+    = 0.9\n_EdgeWidth(\"Edge Width\", Range(0.0, 1.0)) = 0.4\n_Saturation(\"Saturation\",
+    Range(0.0, 1.0)) = 0.75\n_BandingDistortion(\"Banding Distortion\", Range(0.1,
+    1.0)) = 1.0\n_PlasmaColor(\"Plasma Color\", Color) = (0.92, 0.5, 0.05, 1.0)\n\nfloat4
+    EffectMain()\n{\n    // set up input parameters\n    float t = TWO_PI * _Time.y
+    / _Duration;\n    float saturation = _Saturation * 3.0;\n\n    // standard uv
+    coordinates\n    float2 aspect = float2(_ScreenParams.x / _ScreenParams.y, 1.0);\n   
+    float2 uv = LocalUV;\n\n    // sample edge distance + trace\n    float2 edge_dist_trace
+    = SAMPLE_TEXTURE2D(_EdgeTrace, sampler_EdgeTrace, uv).rg;\n    float edge_dist
+    = edge_dist_trace.g;\n\n    // sample the lines input image and change the banding
+    parameter based on it\n    float samp = 1.0 - edge_dist_trace.r;\n    float banding
+    = map(samp, 0.0, 1.0, _BandingDistortion * 10.0, 1.0);\n\n    // plasma uv transformations\n   
+    float2 p = GlobalUV * _ScreenParams.xy / _ScreenParams.xy * aspect * 4.0;\n   
+    float k = 0.1 + cos(p.y + sin(0.148 - t));\n    float w = 0.9 + sin(p.x + cos(0.628
+    + t));\n    if(_AllowDynamicMovement > 0.5)\n    {\n        p += t * 0.3;\n       
+    k += t * 2.4;\n        w -= t * 0.7;\n    }\n    float d = length(p);\n    float
+    s = banding * 7.0 * cos(d + w) * sin(k + w);\n\n    // generate the plasma color
+    based on the flowing uv position\n    float3 baseColor = _PlasmaColor.xyz * saturation;\n   
+    float4 plasma = float4(0.5 + 0.5 * cos(s + baseColor), _PlasmaColor.a);\n\n   
+    float colorThresh = LF_isInEdge(edge_dist, _EdgeWidth) ? 1.0 : 0.0;\n    if(samp
+    > _EdgeLength) colorThresh = 0.0;\n\n    // final color\n    return plasma *
+    colorThresh;\n}"

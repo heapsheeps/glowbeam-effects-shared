@@ -1,0 +1,73 @@
+_Duration("Duration", Float) = 10.0
+_Palette("Palette", Range(0.0, 1.0)) = 0.4
+_Animated("Animated", Float) = 0
+_Lines("Lines", Range(1.0, 1000.0)) = 300.0
+_LineWidth("Line Width", Range(1.0, 10.0)) = 1.0
+_Center("Center", Vector) = (0.5, 0.4, 0, 0)
+
+float3 getPalette(float t, float s)
+{
+    float3 a = float3(0.5, 0.5, 0.5);
+    float3 b = float3(0.5, 0.5, 0.5);
+    float3 c = float3(1.0, 1.0, 1.0);
+    float3 d = float3(0.0, 0.10, 0.20);
+
+    if (s > 1.0) {
+        a = float3(0.5, 0.5, 0.5);
+        b = float3(0.5, 0.5, 0.5);
+        c = float3(2.0, 1.0, 0.0);
+        d = float3(0.5, 0.20, 0.25);
+    }
+
+    if (s > 2.0) {
+        a = float3(0.8, 0.5, 0.4);
+        b = float3(0.2, 0.4, 0.2);
+        c = float3(2.0, 1.0, 1.0);
+        d = float3(0.0, 0.25, 0.25);
+    }
+
+    if (s > 3.0) {
+        a = float3(0.5, 0.5, 0.5);
+        b = float3(0.5, 0.5, 0.5);
+        c = float3(1.0, 0.7, 0.4);
+        d = float3(0.0, 0.15, 0.20);
+    }
+
+    return a + b * cos(6.28318 * (c * t + d));
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+    float t = TWO_PI * _Time.y / _Duration;
+
+    // 1.999 is a bad hack to avoid divide by zeros below (pNew{XY})
+    float2 center = (_Center.xy - 0.5) * 1.999 + lerp(float2(0.0, 0.0), float2(sin(t) / 2.0, cos(t) / 2.0), _Animated);
+
+    // set up uv coordinate system
+    float2 p = uv * 2.0 - 1.0;
+
+    // create uniform rectangular distance field
+    float left = step(p.x, center.x);
+    float bot = step(p.y, center.y);
+    float pNewX1 = (p.x - center.x) / (1.0 - center.x);
+    float pNewY1 = (p.y - center.y) / (1.0 - center.y);
+    float pNewX2 = (p.x - center.x) / (-1.0 - center.x);
+    float pNewY2 = (p.y - center.y) / (-1.0 - center.y);
+    float2 pNew = float2(pNewX2 * left + pNewX1 * (1.0 - left), pNewY2 * bot + pNewY1 * (1.0 - bot));
+    float dist = max(abs(pNew.x), abs(pNew.y));
+
+    // generate your palette color based on the distance field
+    float3 paletteColor = getPalette(frac(_Time.y / _Duration + dist), _Palette * 4.0);
+
+    // transform the distance field to create repeating line pattern with highlights
+    dist = pow(dist, 0.3);
+    dist = sin(dist * _Lines) * 0.5 + 0.5;
+    float highlight = pow(dist, 10.0 - _LineWidth) / 2.0;
+
+    // final color
+    float3 color = (paletteColor * dist) + (paletteColor * highlight);
+    float alpha = 1.0;
+
+    return float4(color, alpha);
+}

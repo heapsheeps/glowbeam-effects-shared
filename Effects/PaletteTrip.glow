@@ -1,0 +1,67 @@
+_Duration("Duration", Float) = 10.0
+_StripeBanding("Stripe Banding", Range(0.0, 1.0)) = 0.4
+_LinesThreshold("Lines Threshold", Range(0.01, 1.0)) = 0.01
+_GradientThreshold("Gradient Threshold", Range(0.01, 1.0)) = 0.01
+_LinesPalette("Lines Palette", Range(0.0, 1.0)) = 1.0
+_GradientPalette("Gradient Palette", Range(0.0, 1.0)) = 0.3
+
+float3 palette(float t, float s)
+{
+    float3 a = float3(0.5, 0.5, 0.5);
+    float3 b = float3(0.5, 0.5, 0.5);
+    float3 c = float3(1.0, 1.0, 1.0);
+    float3 d = float3(0.0, 0.10, 0.20);
+
+    if (s > 1.0) {
+        a = float3(0.5, 0.5, 0.5);
+        b = float3(0.5, 0.5, 0.5);
+        c = float3(2.0, 1.0, 0.0);
+        d = float3(0.5, 0.20, 0.25);
+    }
+
+    if (s > 2.0) {
+        a = float3(0.8, 0.5, 0.4);
+        b = float3(0.2, 0.4, 0.2);
+        c = float3(2.0, 1.0, 1.0);
+        d = float3(0.0, 0.25, 0.25);
+    }
+
+    if (s > 3.0) {
+        a = float3(0.5, 0.5, 0.5);
+        b = float3(0.5, 0.5, 0.5);
+        c = float3(1.0, 0.7, 0.4);
+        d = float3(0.0, 0.15, 0.20);
+    }
+
+    return a + b * cos(6.28318 * (c * t + d));
+}
+
+float4 EffectMain()
+{
+    // set up input parameters
+    float t = _Time.y / _Duration;
+
+    // set up uv coordinate system
+    float2 uv = LocalUV;
+
+    float l2Dist = SAMPLE_TEXTURE2D(_EdgeDistance, sampler_EdgeDistance, uv).r;
+    float dispDist = SAMPLE_TEXTURE2D(_DepthTex, sampler_DepthTex, uv).r;
+
+    // sample the distance image
+    float l2Cutoff = step(_LinesThreshold, l2Dist);
+    float l2commonFactor = 20.0;
+    float l2bandingStripes = l2commonFactor * floor((0.1 + _StripeBanding) * 10.0);
+    float l2Waves = sin((l2Dist + (TWO_PI * t / l2commonFactor)) * l2bandingStripes) * l2Cutoff;
+
+    // sample the disparity map
+    float distCutoff = step(_GradientThreshold, dispDist);
+    float dispWaves = sin((1.0 - dispDist + (TWO_PI * t / 20.0)) * 20.0) * distCutoff * (1.0 - l2Cutoff);
+
+    // generate your palette colors
+    float3 l2Color = palette(frac(t + l2Dist), _LinesPalette * 4.0);
+    float3 dispColor = palette(frac(t + dispDist), _GradientPalette * 4.0);
+
+    // final color
+    float3 color = l2Color * l2Waves + dispColor * dispWaves;
+    return float4(color, 1.0);
+}

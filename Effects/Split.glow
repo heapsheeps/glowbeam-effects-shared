@@ -1,0 +1,115 @@
+_Duration("Duration", Float) = 10.0
+_Speed("Speed", Range(0.0, 1.0)) = 0.2
+_SplitAmount("Split Amount", Range(0.0, 1.0)) = 0.2
+_Reassemble("Reassemble", Float) = 0
+_ShowCutLine("Show Cut Line", Float) = 0
+_ShowGuideLines("Show Guide Lines", Float) = 0
+_Slice1Pos("Slice 1 Position", Vector) = (0.6, 0.7, 0, 0)
+_Slice1Angle("Slice 1 Angle", Range(0.0, 1.0)) = 0.6
+_Slice2Pos("Slice 2 Position", Vector) = (0.5, 0.5, 0, 0)
+_Slice2Angle("Slice 2 Angle", Range(0.0, 1.0)) = 0.86
+_Slice3Pos("Slice 3 Position", Vector) = (0.5, 0.5, 0, 0)
+_Slice3Angle("Slice 3 Angle", Range(0.0, 1.0)) = 0.2
+
+float bounceOut(float t)
+{
+    if(t < 0.0) return 0.0;
+    static const float a = 4.0 / 11.0;
+    static const float b = 8.0 / 11.0;
+    static const float c = 9.0 / 10.0;
+
+    static const float ca = 4356.0 / 361.0;
+    static const float cb = 35442.0 / 1805.0;
+    static const float cc = 16061.0 / 1805.0;
+
+    float t2 = t * t;
+
+    float ret = t < a
+        ? 7.5625 * t2
+        : t < b
+            ? 9.075 * t2 - 9.9 * t + 3.4
+            : t < c
+                ? ca * t2 - cb * t + cc
+                : 10.8 * t * t - 20.52 * t + 10.72;
+
+    return clamp(ret, 0.0, 1.0);
+}
+
+float signedDistToPlane(float2 pt, float4 plane)
+{
+    return dot(pt - plane.zw, plane.xy);
+}
+
+float doCutPlane(inout float2 uv, inout bool inside, float t, float4 plane, bool reverse)
+{
+    if(inside)
+        return 1.0;
+
+    float D = signedDistToPlane(uv, plane);
+
+    float amount = (0.1 * _SplitAmount + 0.01) * (!reverse ? bounceOut(t) : (1.0 - bounceOut(1.0 - t)));
+
+    if(abs(D) < amount) {
+        inside = true;
+    } else {
+        uv = uv - sign(D) * amount * plane.xy;
+    }
+
+    return D;
+}
+
+bool inBox(float2 p)
+{
+    bool4 b = bool4(p.x > 0.0, p.y > 0.0, p.x < 1.0, p.y < 1.0);
+    return all(b);
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+    float t = frac(_Time.y / _Duration);
+
+    bool inside = false;
+    float4 planes[3];
+    planes[0] = float4(cos(PI * _Slice1Angle), sin(PI * _Slice1Angle), _Slice1Pos.xy);
+    planes[1] = float4(cos(PI * _Slice2Angle), sin(PI * _Slice2Angle), _Slice2Pos.xy);
+    planes[2] = float4(cos(PI * _Slice3Angle), sin(PI * _Slice3Angle), _Slice3Pos.xy);
+
+    float D;
+    float lineVisA = 0.0;
+    float lineVisB = 0.0;
+
+    float rSpeed = 0.15 + _Speed;
+
+    bool reverse = false;
+    if(_Reassemble > 0.5) {
+        t = 2.0 * t;
+        if(t > 1.0) {
+            t = 2.0 - t;
+            reverse = true;
+        }
+    }
+
+    if(_ShowCutLine > 0.5 && t > 2.0 / 15.0 && t < 14.0 / 15.0) {
+        if(t < 6.0 / 15.0)
+            lineVisA += 1.0 - smoothstep(0.002, 0.004, abs(signedDistToPlane(uv, planes[0])));
+        else if(t < 10.0 / 15.0)
+            lineVisA += 1.0 - smoothstep(0.002, 0.004, abs(signedDistToPlane(uv, planes[1])));
+        else
+            lineVisA += 1.0 - smoothstep(0.002, 0.004, abs(signedDistToPlane(uv, planes[2])));
+    }
+
+    D = doCutPlane(uv, inside, rSpeed * 30.0 * (t - 10.0 / 15.0), planes[2], reverse);
+    if(_ShowGuideLines > 0.5) lineVisB += 1.0 - smoothstep(0.002, 0.004, abs(D));
+    D = doCutPlane(uv, inside, rSpeed * 30.0 * (t - 6.00 / 15.0), planes[1], reverse);
+    if(_ShowGuideLines > 0.5) lineVisB += 1.0 - smoothstep(0.002, 0.004, abs(D));
+    D = doCutPlane(uv, inside, rSpeed * 30.0 * (t - 2.00 / 15.0), planes[0], reverse);
+    if(_ShowGuideLines > 0.5) lineVisB += 1.0 - smoothstep(0.002, 0.004, abs(D));
+
+    float4 color = (inside || !inBox(uv)) ? float4(0.0, 0.0, 0.0, 0.0) : SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv);
+
+    color = lerp(color, float4(0.0, 1.0, 0.0, 1.0), lineVisB);
+    color = lerp(color, float4(1.0, 0.0, 0.0, 1.0), lineVisA);
+
+    return color;
+}

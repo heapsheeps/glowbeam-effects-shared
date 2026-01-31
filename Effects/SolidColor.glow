@@ -1,0 +1,6 @@
+_Color("Color", Color) = (0.635, 0.890, 1.0, 1.0)
+
+float4 EffectMain()
+{
+    return _Color;
+}

@@ -1,0 +1,73 @@
+_Duration("Duration", Float) = 10.0
+_Center("Center", Vector) = (0.5, 0.5, 0, 0)
+_RadiusIntensity("Radius Intensity", Range(0.0, 1.0)) = 0.05
+_AngleIntensity("Angle Intensity", Range(0.0, 1.0)) = 1.0
+_SpiralChoice("Spiral Choice", Int) = 2
+_PowerPop("Power Pop", Float) = 0
+
+float3 spiral(float2 uv, float2 center)
+{
+    float t = TWO_PI * _Time.y / _Duration;
+
+    float2 d = uv - center;
+    float r = length(d);
+    float a = atan2(d.y, d.x);
+
+    uv.y = a + r;
+
+    float rings = sin(r * 4.0);
+
+    float r_int = _RadiusIntensity * 100.0;
+
+    float a_int = floor(_AngleIntensity * 5.0);
+
+    float3 c = float3(sin(r * r_int + uv.y * a_int + t) + rings, sin(r * r_int + uv.y * a_int + t) + rings, sin(r * r_int + uv.y * a_int + t) + rings);
+    uv.y *= 5.0;
+    c.r += sin(r * 5.0 + uv.y + t);
+    c.g += sin(r * 6.0 + uv.y - t);
+    c.b += cos(r * 7.0 + uv.y + t);
+
+    if (_SpiralChoice == 0) return c;
+
+    r = log(r);
+    uv.y = a;
+
+    a_int *= 8.0;
+
+    float3 l = float3(sin(r + uv.y * a_int + t), sin(r + uv.y * a_int + t), sin(r + uv.y * a_int + t));
+    r *= 10.0;
+    float ruv = sin(r + uv.y);
+    t = sin(t);
+    l.r += ruv + t;
+    l.g += ruv - t;
+    l.b += ruv + t;
+
+    if (_SpiralChoice == 1)
+    {
+        return l;
+    }
+    else if (_SpiralChoice == 2)
+    {
+        return c + l;
+    }
+    else
+    {
+        return c * l;
+    }
+}
+
+float4 EffectMain()
+{
+    float2 uv = 2.0 * GlobalUV - 1.0;
+    uv.x *= _ScreenParams.x / _ScreenParams.y;
+
+    float2 c = 2.0 * _Center.xy - 1.0;
+    c.x *= _ScreenParams.x / _ScreenParams.y;
+
+    float4 col = float4(spiral(uv, c), 1.0);
+
+    if (_PowerPop > 0.5)
+        col = float4(pow(col.r, 2.0), pow(col.g, 2.0), pow(col.b, 2.0), 1.0);
+
+    return col;
+}

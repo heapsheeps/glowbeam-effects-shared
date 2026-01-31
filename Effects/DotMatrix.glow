@@ -1,0 +1,64 @@
+_DisparityScaling("Disparity Scaling", Range(0.0, 1.0)) = 0.75
+_DisparityRangeStart("Disparity Range Start", Range(0.0, 1.0)) = 0.7
+_DisparityRangeEnd("Disparity Range End", Range(0.0, 1.0)) = 0.2
+_Zoom("Zoom", Range(0.0, 1.0)) = 0.5
+_DotSize("Dot Size", Range(0.0, 1.0)) = 0.5
+_Movement("Movement", Range(0.0, 1.0)) = 0.25
+_Amplitude("Amplitude", Range(0.0, 1.0)) = 0.2
+_Pulse0Center("Pulse 0 Center", Vector) = (0.5, 1.0, 0, 0)
+_Pulse0Speed("Pulse 0 Speed", Range(0.0, 1.0)) = 0.5
+_Pulse0Phase("Pulse 0 Phase", Range(0.0, 1.0)) = 0.0
+_Pulse0Width("Pulse 0 Width", Range(0.0, 1.0)) = 1.0
+_Pulse1Center("Pulse 1 Center", Vector) = (0.5, 0.0, 0, 0)
+_Pulse1Speed("Pulse 1 Speed", Range(0.0, 1.0)) = 0.5
+_Pulse1Phase("Pulse 1 Phase", Range(0.0, 1.0)) = 0.0
+_Pulse1Width("Pulse 1 Width", Range(0.0, 1.0)) = 1.0
+
+static const float2x2 rot45 = float2x2(cos(HALF_PI), -sin(HALF_PI), sin(HALF_PI), cos(HALF_PI));
+
+float2 cubicPulse(float c, float w, float x)
+{
+    x = abs(x - c);
+    if(x > w) return float2(0.0, 0.0);
+    x /= w;
+    return float2(1.0 - x * x * (3.0 - 2.0 * x), ((x * x - x) / w));
+}
+
+float dots(float4 _fragCoord, float t)
+{
+    float _zoom = 5.0 * (1.0 / (_Zoom + 0.5));
+    float _size = 0.1;
+    float _dot_size = _size * (_DotSize / 2.0);
+    float _dot_smooth = 0.01 * _dot_size;
+    float T0 = 0.25 + 0.5 * sin(TWO_PI * (t + _Pulse0Phase));
+    float T1 = 0.25 + 0.5 * sin(TWO_PI * (t + _Pulse1Phase));
+    float2 uv0 = _fragCoord.xy / _ScreenParams.xy;
+    float2 uv = (_fragCoord.xy - 0.5 * _ScreenParams.xy) / _ScreenParams.y;
+
+    float2 pulse0dir = normalize(uv - (2.0 * _Pulse0Center.xy - 1.0));
+    float2 pulse1dir = normalize(uv - (2.0 * _Pulse1Center.xy - 1.0));
+    float L0 = length(uv - (2.0 * _Pulse0Center.xy - 1.0));
+    float L1 = length(uv - (2.0 * _Pulse1Center.xy - 1.0));
+
+    float2 P = cubicPulse(3.0 * _Pulse0Speed * T0, 0.25 * _Pulse0Width, L0);
+    float2 Q = cubicPulse(3.0 * _Pulse1Speed * T1, 0.25 * _Pulse1Width, L1);
+
+    uv -= _Movement * P.y * pulse0dir;
+    uv -= _Movement * Q.y * pulse1dir;
+    uv = mul(rot45, uv);
+    uv *= _zoom;
+    uv = fmod(uv, _size);
+    float x = length(uv - _size * 0.5);
+
+    _dot_size += 0.5 * _Amplitude * abs(P.x - Q.x);
+    _dot_size = _dot_size * lerp(1.0, smoothstep(_DisparityRangeStart, _DisparityRangeEnd, SAMPLE_TEXTURE2D(_DepthTex, sampler_DepthTex, uv0).r), _DisparityScaling);
+
+    return (1.0 - (smoothstep(_dot_size - _dot_smooth, _dot_size + _dot_smooth, x)));
+}
+
+float4 EffectMain()
+{
+    float t = _Time.y;
+    float4 color = float4(dots(float4(GlobalUV * _ScreenParams.xy, 0, 0), t), dots(float4(GlobalUV * _ScreenParams.xy, 0, 0), t), dots(float4(GlobalUV * _ScreenParams.xy, 0, 0), t), dots(float4(GlobalUV * _ScreenParams.xy, 0, 0), t));
+    return color;
+}

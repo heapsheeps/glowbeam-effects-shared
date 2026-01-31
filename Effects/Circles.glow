@@ -1,0 +1,21 @@
+_Duration("Duration", Float) = 10.0
+_Zoom("Zoom", Range(0.0, 1.0)) = 0.75
+_Thickness("Thickness", Range(0.0, 1.0)) = 0.5
+_Threshold("Threshold", Range(0.0, 1.0)) = 0.2
+
+float getLoopingTimeValue()
+{
+    float t = _Time.y * TWO_PI / _Duration;
+    return (sin(t) + 1.0) / 2.0;
+}
+
+float4 EffectMain()
+{
+    float2 uvAspectMaintained = LocalUV * _ScreenParams.xy / _ScreenParams.yy;
+
+    float zoomRemapped = (1.0 - _Zoom) * 49.0 + 1.0;
+    float thicknessRemapped = 1.0 - _Thickness;
+    float circles = smoothstep(-_Threshold, _Threshold, sin(60.0 * getLoopingTimeValue() * length(frac(uvAspectMaintained * zoomRemapped) - 0.5)) - thicknessRemapped);
+
+    return float4(1.0, 1.0, 1.0, circles);
+}

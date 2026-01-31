@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e720c10f16ece45c784740227554c0f9, type: 3}
+  m_Name: GhostFlash
+  m_EditorClassIdentifier: 
+  scanTex: {fileID: 2800000, guid: 39ed5b0adb3e64ed3b13f40822a70601, type: 3}
+  depthTex: {fileID: 2800000, guid: a2bed23e68ebc4337a5217f3d12fb929, type: 3}
+  previewZoom: 1
+  previewPan: {x: 0, y: 0}
+  effectName: GhostFlash
+  lastShaderPath: Packages/com.glowbeam.effects/Effects/GhostFlash.glow
+  selectedTabIndex: 0
+  showDepthOverlay: 0
+  currentCode: "_Duration(\"Duration\", Float) = 10.0\n_PrimaryColor(\"Primary Color\",
+    Color) = (0.25, 0.25, 0.25, 1.0)\n_SecondaryColor(\"Secondary Color\", Color)
+    = (1.0, 1.0, 1.0, 1.0)\n\nfloat4 EffectMain()\n{\n    float2 uv = LocalUV;\n   
+    float t = TWO_PI * _Time.y / _Duration;\n\n    float x_displacement_norm = 2.0
+    / _ScreenParams.x;\n    float edge_mask = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex,
+    float2(clamp(uv.x - x_displacement_norm, 0.0, 1.0), uv.y)).r;\n\n    float4 col
+    = lerp(_PrimaryColor, _SecondaryColor, pow(sin(edge_mask + t), 20.0));\n\n   
+    return col;\n}\n"

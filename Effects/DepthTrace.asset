@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e720c10f16ece45c784740227554c0f9, type: 3}
+  m_Name: DepthTrace
+  m_EditorClassIdentifier: 
+  scanTex: {fileID: 2800000, guid: 39ed5b0adb3e64ed3b13f40822a70601, type: 3}
+  depthTex: {fileID: 2800000, guid: a2bed23e68ebc4337a5217f3d12fb929, type: 3}
+  previewZoom: 1
+  previewPan: {x: 0, y: 0}
+  effectName: DepthTrace
+  lastShaderPath: Packages/com.glowbeam.effects/Effects/DepthTrace.glow
+  selectedTabIndex: 0
+  showDepthOverlay: 0
+  currentCode: "_Duration(\"Duration\", Float) = 10.0\n_Noise(\"Noise\", Range(0.0,
+    1.0)) = 0.5\n_Direction(\"Direction\", Vector) = (0.5, 0.5, 0, 0)\n_Color(\"Color\",
+    Vector) = (0.7, 0.2, 0, 0)\n_UseColor(\"Use Color\", Float) = 1\n\nfloat HASHSCALE1
+    = 123.1031;\n\nfloat hash13(float3 p3)\n{\n    p3 = frac(p3 * HASHSCALE1);\n   
+    p3 += dot(p3, p3.yzx + 19.19);\n    return frac((p3.x + p3.y) * p3.z);\n}\n\nfloat3x3
+    lookAt(float3 dir, float3 up)\n{\n    float3 f = normalize(dir);\n    float3
+    s = normalize(cross(up, f));\n    float3 u = cross(f, s);\n\n    float3x3 m;\n   
+    m[0][0] = s.x;\n    m[1][0] = s.y;\n    m[2][0] = s.z;\n    m[0][1] = u.x;\n   
+    m[1][1] = u.y;\n    m[2][1] = u.z;\n    m[0][2] = f.x;\n    m[1][2] = f.y;\n   
+    m[2][2] = f.z;\n\n    return m;\n}\n\nfloat3 pal(float t, float3 a, float3 b,
+    float3 c, float3 d)\n{\n    return a + b * cos(6.28318 * (c * t + d));\n}\n\nfloat4
+    EffectMain()\n{\n    float2 uv = GlobalUV;\n\n    float3 direction3d = float3(_Direction.xy
+    * 2.0 - 1.0, 1.0);\n\n    float depth = SAMPLE_DEPTH().r;\n    float3x3 xf =
+    lookAt(direction3d, float3(0.0, 1.0, 0.0));\n    float3 pos = mul(xf, float3(uv,
+    depth));\n\n    float t = _Time.y / _Duration;\n    float v = 1.0 - frac((1.0
+    - pos.z * 0.75) + t);\n    v = pow(v, 5.0);\n    // Add some noise to mask the
+    limited depth resolution\n    v -= hash13(float3(uv, _Time.y)) * 0.5 * _Noise;\n\n   
+    float3 resultColored = pal(v, float3(0.5, 0.5, 0.5), float3(0.5, 0.5, 0.5), float3(1.0,
+    1.0, 0.5), float3(_Color.xy, 0.30));\n    float3 resultGrey = float3(v, v, v);\n   
+    float3 result = lerp(resultGrey, resultColored, _UseColor);\n\n    float alpha
+    = 1.0;\n\n    return float4(result, alpha);\n}"

@@ -1,0 +1,127 @@
+_Duration("Duration", Float) = 10.0
+_Position("Position", Vector) = (0.5, 0.5, 0, 0)
+_SphereSize("Sphere Size", Range(0.0, 1.0)) = 0.75
+_Animated("Animated", Float) = 1
+
+static const float ambientAmount = 0.55;
+static const float specularAmount = 1.0;
+static const float refractionIn = 0.2;
+static const float refractionOut = 1.0;
+static const float shininess = 400.0;
+
+// Light setup
+static const float3 light = float3(0.5, 0.5, 20.0);
+
+// Object setup
+float4 sph1;
+
+// Sphere Refraction
+float2 iSphere(float3 ro, float3 rd, float4 sph)
+{
+    float3 oc = ro - sph.xyz;
+
+    float b = dot(oc, rd);
+    float c = dot(oc, oc) - sph.w * sph.w;
+    float h = b * b - c;
+
+    float2 t;
+    if(h < 0.0)
+        t = float2(-1.0, -1.0);
+    else {
+        float sqrtH = sqrt(h);
+        t.x = (-b - sqrtH);
+        t.y = (-b + sqrtH);
+    }
+    return t;
+}
+
+// Sphere Normal
+float3 nSphere(float3 pos, float4 sph)
+{
+    return (pos - sph.xyz) / sph.w;
+}
+
+// Sphere Intersection
+float intersect(float3 ro, float3 rd, out float2 resT, float4 sph)
+{
+    resT = float2(1000.0, 1000.0);
+    float id = -1.0;
+    float2 tsph = iSphere(ro, rd, sph);
+
+    if(tsph.x > 0.0 || tsph.y > 0.0)
+    {
+        id = 1.0;
+        resT = tsph;
+    }
+    return id;
+}
+
+float4 EffectMain()
+{
+    // set up uv coordinate system
+    float aspectRatio = _ScreenParams.x / _ScreenParams.y;
+    float2 uv = LocalUV;
+
+    // generate a ray with origin ro and direction rd
+    float sphereX = _Position.x - 0.5;
+    float sphereY = _Position.y - 0.5 + lerp(0.0, sin(TWO_PI * _Time.y / _Duration) * 0.2, _Animated);
+    float4 ro = float4(-sphereX, -sphereY, 1.5, 1.0);
+    float3 rd = normalize(float3((-1.0 + 2.0 * uv) * float2(aspectRatio, 1.0), -1.0));
+
+    // intersect the ray with scene
+    float2 t;
+    float size = (_SphereSize + 0.05);
+    sph1 = float4(sphereX, sphereY, 0.0, size);
+    float id = intersect(ro.xyz, rd, t, sph1);
+
+    float3 texColor = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv).xyz;
+    float3 col;
+    float alpha;
+
+    // If we hit the sphere...
+    if (id > 0.5 && id < 1.5)
+    {
+        // 1) do Schlick approx of Fresnel lighting
+        float3 E = normalize(ro.xyz + t.x * rd);
+        float3 N = normalize(nSphere(E, sph1));
+        float3 L = normalize(light);
+
+        float3 reflectColor = float3(ambientAmount, ambientAmount, ambientAmount);
+        float lambertTerm = dot(N, L);
+        if (lambertTerm > 0.0) {
+
+            float w = pow(1.0 - max(0.0, dot(normalize(L + E), E)), 5.0);
+            reflectColor += (1.0 - w) * pow(max(0.0, dot(reflect(-L, E), E)), shininess);
+        }
+
+        // 2) do Fresnel refraction to look up the appropriate Perlin noise color
+        // light goes in
+        float3 refractionVec = refract(rd, N, refractionIn);
+
+        // light comes out
+        float id2 = intersect(E, refractionVec, t, sph1);
+        if (id2 > 0.5 && id2 < 1.5)
+        {
+            E += refractionVec * t.y;
+            E = normalize(E);
+            N = normalize(nSphere(E, sph1));
+            refractionVec = refract(refractionVec, N, refractionOut);
+        }
+
+        float2 refractionSample = float2(refractionVec.x + uv.x, refractionVec.y + uv.y);
+        float3 refractionTexture = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, refractionSample).xyz;
+        col = lerp(refractionTexture, reflectColor, reflectColor);
+        alpha = 1.0;
+    }
+    else
+    {
+        // for full background
+        // col = texColor;
+
+        // for black background
+        col = float3(0.0, 0.0, 0.0);
+        alpha = 0.0;
+    }
+
+    return float4(col, alpha);
+}

@@ -1,0 +1,36 @@
+_Duration("Duration", Float) = 10.0
+_EdgeWidth("Edge Width", Range(0.0, 1.0)) = 0.3
+_Color("Color", Vector) = (0.5, 1.0, 0, 0)
+
+static const float edge_length = 0.8;
+
+float getLoopingTimeValue(float x)
+{
+    float t = x + (TWO_PI * _Time.y / _Duration);
+    return abs(sin(t));
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+    float2 edges = SAMPLE_TEXTURE2D(_EdgeTrace, sampler_EdgeTrace, uv).rg;
+    float edge_dist = edges.g;
+    float edge_mask = edges.r;
+
+    if(getLoopingTimeValue(edge_mask) < edge_length && edge_mask > 0.0 && LF_isInEdge(edge_dist, _EdgeWidth))
+    {
+        float2 hueSaturation2 = frac(_Color.xy + float2(0.3, -0.2));
+        float3 col1 = lerp(float3(_Color.xy, 1.0), float3(hueSaturation2, 1.0), getLoopingTimeValue(uv.x));
+        float3 col2 = float3(1.0, 1.0, 1.0);
+        col2.x = 1.0 - col1.x;
+        col2.y = lerp(0.3, 1.0, getLoopingTimeValue(uv.x));
+
+        col2.z = 1.0;
+        float3 col = lerp(hsv2rgb(col1), hsv2rgb(col2), frac(uv.x));
+        return float4(col, 1.0);
+    }
+    else
+    {
+        return float4(0.0, 0.0, 0.0, 0.0);
+    }
+}

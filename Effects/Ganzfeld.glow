@@ -1,0 +1,32 @@
+_Duration("Duration", Float) = 10.0
+_ColorBanding("Color Banding", Range(0.0, 1.0)) = 0.5
+_HueCycle("Hue Cycle", Range(0.0, 1.0)) = 0.0
+_RainbowGradientAmount("Rainbow Gradient Amount", Range(0.0, 1.0)) = 0.33
+_Center("Center", Vector) = (0.5, 0.5, 0, 0)
+
+float3 colorPalette(float t, float3 c, float3 d)
+{
+    return 0.5 + 0.5 * cos(6.28318 * (c * t + d));
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+    float t = TWO_PI * _Time.y / _Duration;
+
+    // gamma transform
+    float dist = SAMPLE_TEXTURE2D(_EdgeDistance, sampler_EdgeDistance, uv).r;
+    dist += 0.001;
+    float filt = step(0.0001, dist);
+
+    // build color gradient
+    float distCenter = distance(uv, _Center.xy);
+    float3 color1 = float3(_ColorBanding, _ColorBanding, _ColorBanding);
+    color1 *= 2.0;
+    float3 color2 = float3(_HueCycle, distCenter - _RainbowGradientAmount, distCenter);
+    float pal = dist;
+    pal = pow(pal, sin(t) * 0.4 + 0.41) * filt;
+    float4 col3 = float4(colorPalette(pal, color1, color2), 1.0);
+
+    return col3;
+}

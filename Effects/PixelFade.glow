@@ -1,0 +1,17 @@
+_Duration("Duration", Float) = 10.0
+_PixelSize("Pixel Size", Range(0.0, 1.0)) = 0.5
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+    float2 resolution = _ScreenParams.xy / ((_PixelSize + 0.1) * 50.0);
+    float2 lowresxy = floor(uv * resolution);
+    float t = TWO_PI * _Time.y / _Duration;
+
+    float4 black = float4(0.0, 0.0, 0.0, 0.0);
+    float4 image = float4(SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv).rgb, 1.0);
+
+    float4 color = lerp(black, image, step(rand(lowresxy), sin(t)));
+
+    return color;
+}

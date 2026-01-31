@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e720c10f16ece45c784740227554c0f9, type: 3}
+  m_Name: DefaultPassthrough
+  m_EditorClassIdentifier: 
+  scanTex: {fileID: 2800000, guid: 39ed5b0adb3e64ed3b13f40822a70601, type: 3}
+  depthTex: {fileID: 2800000, guid: a2bed23e68ebc4337a5217f3d12fb929, type: 3}
+  previewZoom: 1
+  previewPan: {x: 0, y: 0}
+  effectName: DefaultPassthrough
+  lastShaderPath: Packages/com.glowbeam.effects/Effects/DefaultPassthrough.glow
+  selectedTabIndex: 0
+  showDepthOverlay: 0
+  currentCode: "float4 EffectMain()\n{\n    return SAMPLE_MAIN_TEXTURE();\n}\n\n"

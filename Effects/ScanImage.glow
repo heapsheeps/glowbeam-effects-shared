@@ -1,0 +1,22 @@
+_ShowToon("Show Toon", Float) = 0
+_InvertHue("Invert Hue", Float) = 0
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+    float4 tex = float4(0.0, 0.0, 0.0, 0.0);
+
+    if(_ShowToon > 0.5)
+        tex = SAMPLE_TEXTURE2D(_RgbCartoonized, sampler_RgbCartoonized, uv);
+    else
+        tex = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv);
+
+    if(_InvertHue > 0.5)
+    {
+        float3 hsv = rgbToHsv(tex.rgb);
+        hsv.x = frac(hsv.x + 0.5);
+        tex.rgb = hsvToRgb(hsv);
+    }
+
+    return float4(tex.rgb, 1.0);
+}

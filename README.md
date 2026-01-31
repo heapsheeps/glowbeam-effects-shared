@@ -58,7 +58,7 @@ Core shader library and utilities for the Glowbeam effects system. This package 
 
 Namespace: `Glowbeam.Effects`
 
-### Shaders/
+### Templates/
 
 **EffectTemplate.shader.txt** - Full URP shader template with placeholders
 
@@ -140,7 +140,7 @@ if (ShaderTemplateProcessor.ValidateUserCode(glowCode, out string error))
     );
     
     // Write to .shader file and compile
-    File.WriteAllText("MyEffect_compiled.shader", fullShader);
+    File.WriteAllText("Assets/Effects_Generated/MyEffect.shader", fullShader);
 }
 else
 {
@@ -277,7 +277,7 @@ com.glowbeam.effects/
 │   └── Glowbeam.Effects.Editor.asmdef
 ├── ShaderLibrary/
 │   └── Core.hlsl
-└── Shaders/
+└── Templates/
     └── EffectTemplate.shader.txt
 ```
 

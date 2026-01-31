@@ -1,0 +1,47 @@
+_Duration("Duration", Float) = 10.0
+_UseDisparity("Use Disparity", Float) = 0
+_PrimaryHue("Primary Hue", Range(0.0, 1.0)) = 0.6
+_PrimarySaturation("Primary Saturation", Range(0.0, 1.0)) = 0.7
+_SecondaryHue("Secondary Hue", Range(0.0, 1.0)) = 0.9
+_SecondarySaturation("Secondary Saturation", Range(0.0, 1.0)) = 0.8
+
+float getLoopingTimeValue()
+{
+    float t = _Time.y * TWO_PI / _Duration;
+    return (sin(t) + 1.0);
+}
+
+float2 getLoopingTimeValueWithUv(float2 uv)
+{
+    float t = _Time.y * TWO_PI / _Duration;
+    return (sin(t + uv) + 1.0);
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+
+    float t = getLoopingTimeValue();
+    float2 t_uv = getLoopingTimeValueWithUv(uv);
+
+    float3 primaryColorActual = hsv2rgb(float3(_PrimaryHue, _PrimarySaturation, 1.0));
+    float3 secondaryColorActual = hsv2rgb(float3(_SecondaryHue, _SecondarySaturation, 1.0));
+
+    float3 primaryColorMix = lerp(primaryColorActual, secondaryColorActual, t_uv.y);
+    float3 secondaryColorMix = lerp(secondaryColorActual, primaryColorActual, t_uv.x);
+
+    float mask;
+    if(_UseDisparity > 0.5)
+    {
+        mask = SAMPLE_TEXTURE2D(_DepthTex, sampler_DepthTex, uv).r;
+    }
+    else
+    {
+        float3 image = SAMPLE_TEXTURE2D(_RgbCartoonized, sampler_RgbCartoonized, uv).rgb;
+        mask = (image.r + image.g + image.b) / 3.0;
+    }
+
+    float useFg = step(t, mask - EPSILON);
+    float3 result = lerp(secondaryColorMix, primaryColorMix, useFg);
+    return float4(result, 1.0);
+}

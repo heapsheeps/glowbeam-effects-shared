@@ -1,0 +1,56 @@
+_Duration("Duration", Float) = 10.0
+_Speed("Speed", Range(0.0, 1.0)) = 1.0
+
+float random_float(float x)
+{
+    return frac(sin(x) * 1e4);
+}
+
+float random_vec2(float2 st)
+{
+    return frac(sin(dot(st.xy, float2(12.9898, 78.233))) * 43758.5453123);
+}
+
+float randomSerie(float x, float freq, float t)
+{
+    return step(0.8, random_float(floor(x * freq) - floor(t)));
+}
+
+float4 EffectMain()
+{
+    float2 st = LocalUV;
+    st.x *= _ScreenParams.x / _ScreenParams.y;
+
+    float3 color = float3(0.0, 0.0, 0.0);
+
+    float maxCols = 20.0;
+    float cols = 1.0;
+
+    float loop_length = _Duration;
+    if (fmod(floor(_Time.y), loop_length) < loop_length / 2.0)
+    {
+        cols = lerp(1.0, maxCols, fmod(floor(_Time.y), loop_length) / loop_length);
+    }
+    else
+    {
+        cols = maxCols;
+    }
+
+    float freq = random_float(floor(_Time.y)) + abs(atan(_Time.y) * 0.1);
+    float t = _Time.y * (1.0 - freq) * 30.0 * _Speed;
+
+    if (frac(st.x * cols * 0.5) < 0.5)
+    {
+        t *= -random_float(1.0);
+    }
+
+    freq += random_float(floor(st.y));
+
+    float offset = 0.25;
+    color = float3(randomSerie(st.y, freq * 100.0, t + offset),
+                   randomSerie(st.y, freq * 100.0, t),
+                   randomSerie(st.y, freq * 100.0, t - offset));
+
+    float alpha = smoothstep(0.0, 0.1, max(max(color.r, color.g), color.b));
+    return float4(color, alpha);
+}

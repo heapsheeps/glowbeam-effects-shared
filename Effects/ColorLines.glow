@@ -1,0 +1,79 @@
+_Duration("Duration", Float) = 10.0
+_ColorStrobeSpeed("Color Strobe Speed", Range(0.0, 20.0)) = 7.0
+_Zoom("Zoom", Range(0.0, 1.0)) = 0.5
+_LineWidth("Line Width", Range(0.0, 1.0)) = 0.2
+_Center("Center", Vector) = (0.5, 0.5, 0, 0)
+
+float random_vec2(float2 st)
+{
+    return frac(sin(dot(st.xy, float2(12.9898, 78.233))) * 43758.5453123);
+}
+
+float2 tile(float2 _st, float _zoom)
+{
+    _st *= _zoom;
+    return frac(_st);
+}
+
+float barra(float2 _st, float _width)
+{
+    float pct0 = smoothstep(_st.x - _width, _st.x, _st.y);
+    pct0 *= 1.0 - smoothstep(_st.x, _st.x + _width, _st.y);
+    return pct0;
+}
+
+float contrabarra(float2 _st, float _width)
+{
+    float pct1 = smoothstep(_st.x - _width, _st.x, 1.0 - _st.y);
+    pct1 *= 1.0 - smoothstep(_st.x, _st.x + _width, 1.0 - _st.y);
+    return pct1;
+}
+
+float4 EffectMain()
+{
+    float2 st = LocalUV;
+
+    float2 centerSt = st - _Center.xy;
+    float r = length(centerSt) * 2.0;
+    float a = atan2(centerSt.y, centerSt.x);
+
+    st *= 8.0 + (_Zoom * 10.0);
+    float2 ipos = floor(st);
+
+    st = tile(st, 1.0);
+
+    float t = TWO_PI * _Time.y / _Duration;
+
+    float2 localCenterSt = st - 0.5;
+    float localR = length(localCenterSt) * 2.0;
+    float localA = atan2(localCenterSt.y, localCenterSt.x);
+
+    float rotating = step(HALF_PI, abs(cos((localA + t + (r * 2.0)))));
+    float randX = random_vec2(ipos + rotating) + rotating;
+
+    float3 color = float3(0.0, 0.0, 0.0);
+
+    // Colors
+    if(randX > 0.75)
+    {
+        color = float3(0.0, 0.4, 0.4) + color;
+    }
+    else if(randX > 0.5)
+    {
+        color = float3(0.0, 0.7, 0.4) + color;
+    }
+    else if(randX > 0.25)
+    {
+        color = float3(0.0, 0.4, 1.0) + color;
+    }
+    else
+    {
+        color = float3(0.0, 0.0, 0.4) + color;
+    }
+    color.r = 1.0 - abs(sin(r + (t * _ColorStrobeSpeed)));
+
+    // Slashes
+    float mask = lerp(contrabarra(st, _LineWidth * 0.30), barra(st, _LineWidth * 0.30), step(0.5, randX));
+
+    return float4(color * mask, mask);
+}

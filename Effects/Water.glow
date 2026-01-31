@@ -1,0 +1,35 @@
+_Duration("Duration", Float) = 10.0
+_Sparkle("Sparkle", Range(0.01, 1.0)) = 0.6
+_BackgroundColor("Background Color", Color) = (0.0, 0.35, 0.5, 1.0)
+_ForegroundColor("Foreground Color", Color) = (0.9, 0.9, 0.9, 1.0)
+
+float3 caustic(float n, float intensity, float2 p, float3 seed)
+{
+    float t = TWO_PI * _Time.y / _Duration;
+    float3 result;
+    result.xy = p + float2(cos(t - seed.x) + sin(t + seed.y), sin(t - seed.y) + cos(t + seed.x));
+    result.z = seed.z + 1.0 / length(float2(p.x / (sin(seed.x + t) / intensity), p.y / (cos(seed.y + t) / intensity)));
+    return result;
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+
+    float iterationsRemapped = _Sparkle * 3.0 + 2.0;
+    float tA = _Time.y * 0.5 + 23.0;
+
+    float2 p = uv * TWO_PI - 250.0;
+    float intensity = 0.005;
+
+    float3 result = float3(p, 1.0);
+    result = lerp(result, caustic(0.0, intensity, p, result), smoothstep(iterationsRemapped, 0.0, 1.0));
+    result = lerp(result, caustic(1.0, intensity, p, result), smoothstep(iterationsRemapped - 1.0, 0.0, 1.0));
+    result = lerp(result, caustic(2.0, intensity, p, result), smoothstep(iterationsRemapped - 2.0, 0.0, 1.0));
+    result = lerp(result, caustic(3.0, intensity, p, result), smoothstep(iterationsRemapped - 3.0, 0.0, 1.0));
+    result = lerp(result, caustic(4.0, intensity, p, result), smoothstep(iterationsRemapped - 4.0, 0.0, 1.0));
+    float c = 1.17 - pow(result.z / iterationsRemapped, 1.4);
+
+    float4 color = clamp(pow(abs(c), 8.0) * _ForegroundColor + _BackgroundColor, 0.0, 1.0);
+    return color;
+}

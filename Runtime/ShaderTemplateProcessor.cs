@@ -12,7 +12,7 @@ namespace Glowbeam.Effects
     /// </summary>
     public static class ShaderTemplateProcessor
     {
-        private const string TEMPLATE_WITH_PLACEHOLDERS_PATH = "Packages/com.glowbeam.effects/Shaders/EffectTemplate.shader.txt";
+        private const string TEMPLATE_WITH_PLACEHOLDERS_PATH = "Packages/com.glowbeam.effects/Templates/EffectTemplate.shader.txt";
         private const string DERIVED_PROPERTIES_PLACEHOLDER = "<DERIVED_USER_PROPERTIES_PLACEHOLDER>";
         private const string USER_CODE_PLACEHOLDER = "<USER_CODE_PLACEHOLDER>";
         private const string EFFECT_NAME_PLACEHOLDER = "MyEffect";

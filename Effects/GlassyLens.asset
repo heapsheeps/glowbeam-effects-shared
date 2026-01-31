@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e720c10f16ece45c784740227554c0f9, type: 3}
+  m_Name: GlassyLens
+  m_EditorClassIdentifier: 
+  scanTex: {fileID: 2800000, guid: 39ed5b0adb3e64ed3b13f40822a70601, type: 3}
+  depthTex: {fileID: 2800000, guid: a2bed23e68ebc4337a5217f3d12fb929, type: 3}
+  previewZoom: 1
+  previewPan: {x: 0, y: 0}
+  effectName: GlassyLens
+  lastShaderPath: Packages/com.glowbeam.effects/Effects/GlassyLens.glow
+  selectedTabIndex: 0
+  showDepthOverlay: 0
+  currentCode: "_Duration(\"Duration\", Float) = 10.0\n_Position(\"Position\", Vector)
+    = (0.5, 0.5, 0, 0)\n_SphereSize(\"Sphere Size\", Range(0.0, 1.0)) = 0.75\n_Animated(\"Animated\",
+    Float) = 1\n\nstatic const float ambientAmount = 0.55;\nstatic const float specularAmount
+    = 1.0;\nstatic const float refractionIn = 0.2;\nstatic const float refractionOut
+    = 1.0;\nstatic const float shininess = 400.0;\n\n// Light setup\nstatic const
+    float3 light = float3(0.5, 0.5, 20.0);\n\n// Object setup\nfloat4 sph1;\n\n//
+    Sphere Refraction\nfloat2 iSphere(float3 ro, float3 rd, float4 sph)\n{\n    float3
+    oc = ro - sph.xyz;\n\n    float b = dot(oc, rd);\n    float c = dot(oc, oc) -
+    sph.w * sph.w;\n    float h = b * b - c;\n\n    float2 t;\n    if(h < 0.0)\n       
+    t = float2(-1.0, -1.0);\n    else {\n        float sqrtH = sqrt(h);\n       
+    t.x = (-b - sqrtH);\n        t.y = (-b + sqrtH);\n    }\n    return t;\n}\n\n//
+    Sphere Normal\nfloat3 nSphere(float3 pos, float4 sph)\n{\n    return (pos - sph.xyz)
+    / sph.w;\n}\n\n// Sphere Intersection\nfloat intersect(float3 ro, float3 rd,
+    out float2 resT, float4 sph)\n{\n    resT = float2(1000.0, 1000.0);\n    float
+    id = -1.0;\n    float2 tsph = iSphere(ro, rd, sph);\n\n    if(tsph.x > 0.0 ||
+    tsph.y > 0.0)\n    {\n        id = 1.0;\n        resT = tsph;\n    }\n    return
+    id;\n}\n\nfloat4 EffectMain()\n{\n    // set up uv coordinate system\n    float
+    aspectRatio = _ScreenParams.x / _ScreenParams.y;\n    float2 uv = LocalUV;\n\n   
+    // generate a ray with origin ro and direction rd\n    float sphereX = _Position.x
+    - 0.5;\n    float sphereY = _Position.y - 0.5 + lerp(0.0, sin(TWO_PI * _Time.y
+    / _Duration) * 0.2, _Animated);\n    float4 ro = float4(-sphereX, -sphereY, 1.5,
+    1.0);\n    float3 rd = normalize(float3((-1.0 + 2.0 * uv) * float2(aspectRatio,
+    1.0), -1.0));\n\n    // intersect the ray with scene\n    float2 t;\n    float
+    size = (_SphereSize + 0.05);\n    sph1 = float4(sphereX, sphereY, 0.0, size);\n   
+    float id = intersect(ro.xyz, rd, t, sph1);\n\n    float3 texColor = SAMPLE_TEXTURE2D(_ScanTex,
+    sampler_ScanTex, uv).xyz;\n    float3 col;\n    float alpha;\n\n    // If we
+    hit the sphere...\n    if (id > 0.5 && id < 1.5)\n    {\n        // 1) do Schlick
+    approx of Fresnel lighting\n        float3 E = normalize(ro.xyz + t.x * rd);\n       
+    float3 N = normalize(nSphere(E, sph1));\n        float3 L = normalize(light);\n\n       
+    float3 reflectColor = float3(ambientAmount, ambientAmount, ambientAmount);\n       
+    float lambertTerm = dot(N, L);\n        if (lambertTerm > 0.0) {\n\n           
+    float w = pow(1.0 - max(0.0, dot(normalize(L + E), E)), 5.0);\n            reflectColor
+    += (1.0 - w) * pow(max(0.0, dot(reflect(-L, E), E)), shininess);\n        }\n\n       
+    // 2) do Fresnel refraction to look up the appropriate Perlin noise color\n       
+    // light goes in\n        float3 refractionVec = refract(rd, N, refractionIn);\n\n       
+    // light comes out\n        float id2 = intersect(E, refractionVec, t, sph1);\n       
+    if (id2 > 0.5 && id2 < 1.5)\n        {\n            E += refractionVec * t.y;\n           
+    E = normalize(E);\n            N = normalize(nSphere(E, sph1));\n           
+    refractionVec = refract(refractionVec, N, refractionOut);\n        }\n\n       
+    float2 refractionSample = float2(refractionVec.x + uv.x, refractionVec.y + uv.y);\n       
+    float3 refractionTexture = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, refractionSample).xyz;\n       
+    col = lerp(refractionTexture, reflectColor, reflectColor);\n        alpha = 1.0;\n   
+    }\n    else\n    {\n        // for full background\n        // col = texColor;\n\n       
+    // for black background\n        col = float3(0.0, 0.0, 0.0);\n        alpha
+    = 0.0;\n    }\n\n    return float4(col, alpha);\n}"

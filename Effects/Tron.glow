@@ -1,0 +1,30 @@
+_Duration("Duration", Float) = 10.0
+_EdgeLength("Edge Length", Range(0.0, 1.0)) = 0.5
+_EdgeWidth("Edge Width", Range(0.0, 1.0)) = 0.2
+_PrimaryHue("Primary Hue", Range(0.0, 1.0)) = 0.5
+_PrimarySaturation("Primary Saturation", Range(0.0, 1.0)) = 1.0
+_SecondaryHue("Secondary Hue", Range(0.0, 1.0)) = 0.8
+_SecondarySaturation("Secondary Saturation", Range(0.0, 1.0)) = 1.0
+_UseSecondaryColor("Use Secondary Color", Float) = 1.0
+_SecondaryColorBlend("Secondary Color Blend", Range(1.0, 10.0)) = 2.0
+
+float4 EffectMain()
+{
+    float2 edges = SAMPLE_EDGE_TRACE();
+    float dist = edges.g;
+    float edge_parametric = edges.r;
+    float t = _Time.y / _Duration;
+
+    float4 result = float4(0.0, 0.0, 0.0, 0.0);
+
+    if(edge_parametric > 0.0 && frac(edge_parametric + t) < _EdgeLength && LF_isInEdge(dist, _EdgeWidth))
+    {
+        float3 color1 = hsv2rgb(float3(_PrimaryHue, _PrimarySaturation, 1.0));
+        float3 color2 = hsv2rgb(float3(_SecondaryHue, _SecondarySaturation, 1.0));
+        float mixAmount = lerp(0.0, frac(floor(_SecondaryColorBlend) * (edge_parametric + t)), _UseSecondaryColor);
+        result.rgb = lerp(color1, color2, mixAmount);
+        result.a = 1.0;
+    }
+
+    return result;
+}

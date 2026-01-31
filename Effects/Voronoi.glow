@@ -1,0 +1,71 @@
+_Duration("Duration", Float) = 10.0
+_ColorBackground("Color Background", Color) = (0.0, 0.0, 0.0, 1.0)
+_ColorEdge("Color Edge", Color) = (1.0, 1.0, 1.0, 1.0)
+_Zoom("Zoom", Range(1.0, 100.0)) = 5.0
+_Width("Width", Range(0.1, 1.0)) = 0.3
+_Variance("Variance", Range(0.0, 1.0)) = 0.8
+
+float2 hash2(float2 p)
+{
+    return frac(sin(float2(dot(p, float2(127.1, 311.7)), dot(p, float2(269.5, 183.3)))) * 43758.5453);
+}
+
+float2 offset(float2 grid)
+{
+    float2 rand = TWO_PI * hash2(grid);
+    float t = TWO_PI * _Time.y / _Duration;
+    return 0.24 * _Variance * (sin(t + rand));
+}
+
+float3 voronoi(float2 x)
+{
+    float2 n = floor(x);
+    float2 f = frac(x);
+
+    float2 mg, mr;
+    float md = 8.0;
+    for(int j = -1; j <= 1; j++)
+    for(int i = -1; i <= 1; i++)
+    {
+        float2 g = float2(float(i), float(j));
+        float2 o = float2(0.0, 0.0);
+        o += offset(n + g);
+        float2 r = g + o - f;
+        float d = dot(r, r);
+
+        if(d < md)
+        {
+            md = d;
+            mr = r;
+            mg = g;
+        }
+    }
+
+    md = 8.0;
+    for(int j = -2; j <= 2; j++)
+    for(int i = -2; i <= 2; i++)
+    {
+        float2 g = mg + float2(float(i), float(j));
+        float2 o = float2(0.0, 0.0);
+        o += offset(n + g);
+        float2 r = g + o - f;
+
+        if(dot(mr - r, mr - r) > 0.00001)
+            md = min(md, dot(0.5 * (mr + r), normalize(r - mr)));
+    }
+
+    return float3(md, mr);
+}
+
+float4 EffectMain()
+{
+    float2 uv = GlobalUV * _ScreenParams.xy / _ScreenParams.xy;
+    uv.x -= 0.5;
+    uv.x *= _ScreenParams.x / _ScreenParams.y;
+
+    float3 c = voronoi(_Zoom * uv);
+
+    float4 color = lerp(_ColorEdge, _ColorBackground, 
+                       smoothstep(_Width * 0.05, _Width * 0.05 + _Zoom * 0.005, c.x));
+    return color;
+}

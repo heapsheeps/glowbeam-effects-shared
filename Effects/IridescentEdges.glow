@@ -1,0 +1,49 @@
+_Duration("Duration", Float) = 10.0
+_AllowDynamicMovement("Allow Dynamic Movement", Float) = 0
+_EdgeLength("Edge Length", Range(0.0, 1.0)) = 0.9
+_EdgeWidth("Edge Width", Range(0.0, 1.0)) = 0.4
+_Saturation("Saturation", Range(0.0, 1.0)) = 0.75
+_BandingDistortion("Banding Distortion", Range(0.1, 1.0)) = 1.0
+_PlasmaColor("Plasma Color", Color) = (0.92, 0.5, 0.05, 1.0)
+
+float4 EffectMain()
+{
+    // set up input parameters
+    float t = TWO_PI * _Time.y / _Duration;
+    float saturation = _Saturation * 3.0;
+
+    // standard uv coordinates
+    float2 aspect = float2(_ScreenParams.x / _ScreenParams.y, 1.0);
+    float2 uv = LocalUV;
+
+    // sample edge distance + trace
+    float2 edge_dist_trace = SAMPLE_TEXTURE2D(_EdgeTrace, sampler_EdgeTrace, uv).rg;
+    float edge_dist = edge_dist_trace.g;
+
+    // sample the lines input image and change the banding parameter based on it
+    float samp = 1.0 - edge_dist_trace.r;
+    float banding = map(samp, 0.0, 1.0, _BandingDistortion * 10.0, 1.0);
+
+    // plasma uv transformations
+    float2 p = GlobalUV * _ScreenParams.xy / _ScreenParams.xy * aspect * 4.0;
+    float k = 0.1 + cos(p.y + sin(0.148 - t));
+    float w = 0.9 + sin(p.x + cos(0.628 + t));
+    if(_AllowDynamicMovement > 0.5)
+    {
+        p += t * 0.3;
+        k += t * 2.4;
+        w -= t * 0.7;
+    }
+    float d = length(p);
+    float s = banding * 7.0 * cos(d + w) * sin(k + w);
+
+    // generate the plasma color based on the flowing uv position
+    float3 baseColor = _PlasmaColor.xyz * saturation;
+    float4 plasma = float4(0.5 + 0.5 * cos(s + baseColor), _PlasmaColor.a);
+
+    float colorThresh = LF_isInEdge(edge_dist, _EdgeWidth) ? 1.0 : 0.0;
+    if(samp > _EdgeLength) colorThresh = 0.0;
+
+    // final color
+    return plasma * colorThresh;
+}

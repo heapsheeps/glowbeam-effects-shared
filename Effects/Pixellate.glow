@@ -1,0 +1,20 @@
+_Duration("Duration", Float) = 10.0
+_PixelSize("Pixel Size", Range(0.0, 1.0)) = 0.3
+_PixelSnap("Pixel Snap", Float) = 0
+
+float4 EffectMain()
+{
+    float grid = (_PixelSize * 50.0 + 10.0) * sin(TWO_PI * _Time.y / _Duration);
+
+    if(_PixelSnap > 0.5)
+        grid = floor(abs(grid) + 1.0);
+
+    grid = max(1.0, grid);
+
+    float2 uvPixels = GlobalUV * _ScreenParams.xy - fmod(GlobalUV * _ScreenParams.xy - _ScreenParams.xy, grid);
+    float2 uvPixellated = uvPixels / _ScreenParams.xy;
+
+    float3 color = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uvPixellated).rgb;
+
+    return float4(color, 1.0);
+}

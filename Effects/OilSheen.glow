@@ -1,0 +1,51 @@
+_Duration("Duration", Float) = 10.0
+_Banding("Banding", Range(0.0, 1.0)) = 0.4
+_Saturation("Saturation", Range(0.0, 1.0)) = 0.4
+_AllowMovement("Allow Movement", Float) = 0
+_Position("Position", Vector) = (0.5, 0.5, 0, 0)
+
+void perlin(inout float2 pos, float3 A, inout float4 color, inout float s)
+{
+    float2 m = frac(pos);
+    float2 l = dot(pos - m, A.yz) + A.xz;
+    float2 r = lerp(frac(57.0 * sin(l++)), frac(57.0 * sin(l)), (m *= m * (3.0 - m - m)).x);
+    color += lerp(r.x, r.y, m.y) / (s += s);
+    pos = mul(pos, float2x2(1, 1, 1, -1));
+}
+
+float4 EffectMain()
+{
+    float2 uv = GlobalUV * _ScreenParams.xy / _ScreenParams.yy;
+    float t = TWO_PI * _Time.y / _Duration;
+
+    // set up input parameters
+    float s = 0.9;
+    float3 A = float3(0.0, 1.0, 157.0);
+    float4 color = float4(0.0, 0.0, 0.0, 0.0);
+    float banding = _Banding * 100.0;
+    float saturation = (1.0 - _Saturation) * 20.0 + 1.0;
+
+    uv += _Position.xy - 0.5;
+
+    if(_AllowMovement > 0.5)
+    {
+        // set up uv coordinate system
+        uv *= log(_Time.y / 3.0 + 5.0);
+        uv.x += (_Time.y / 3.0 + 5.0);
+
+        // rotation manipulation of uv coordinate system based on time
+        float a = (_Time.y / 3.0 + 5.0) / 22.0;
+        float2 sc = sin(float2(a, a + 1.6));
+        uv = mul(uv, float2x2(sc.y, -sc.x, sc.x, sc.y));
+    }
+
+    // four-pass perlin noise generation
+    perlin(uv, A, color, s);
+    perlin(uv, A, color, s);
+    perlin(uv, A, color, s);
+    perlin(uv, A, color, s);
+
+    // final color
+    color += sin(2.0 * sin(color * banding + t * 2.0) + uv.yxyy - uv.yyxy * 0.5) / saturation;
+    return float4(color.rgb, 1.0);
+}

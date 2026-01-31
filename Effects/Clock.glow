@@ -1,0 +1,65 @@
+_TimezoneOffset("Timezone Offset", Range(-12, 14)) = -8
+_SmoothSecondHand("Smooth Second Hand", Float) = 1
+
+float2 rotate(float2 p, float a)
+{
+    float2 cs = float2(cos(a), sin(a));
+    return float2(dot(cs, p), cs.x * p.y - cs.y * p.x);
+}
+
+float sdCircle(float2 p, float r)
+{
+    return abs(length(p) - r);
+}
+
+float sdSegmentOrigin(float2 p, float2 b)
+{
+    float h = saturate(dot(p, b) / dot(b, b));
+    return length(p - h * b);
+}
+
+float sdSegment(float2 p, float2 a, float2 b)
+{
+    float2 pa = p - a;
+    float2 ba = b - a;
+    float h = saturate(dot(pa, ba) / dot(ba, ba));
+    return length(pa - ba * h);
+}
+
+float value(float dist, float width)
+{
+    return 1.0 - smoothstep(0.015 * width - 0.008, 0.015 * width + 0.008, abs(dist));
+}
+
+float2 unit(float angle)
+{
+    return float2(cos(angle), sin(angle));
+}
+
+float4 EffectMain()
+{
+    float2 uv = (LocalUV * 2.0 - 1.0);
+    uv.x *= _ScreenParams.x / _ScreenParams.y;
+
+    // Use Unity's _Time for clock (in seconds since level load)
+    // Note: For real-world clock, you'd need to pass in actual time of day
+    float timeSeconds = fmod(_Time.y, 86400.0); // Wrap to 24 hours
+
+    float H = fmod(timeSeconds / (60.0 * 60.0) + floor(_TimezoneOffset), 12.0);
+    float M = fmod(timeSeconds, 60.0 * 60.0) / 60.0;
+    float S = fmod(timeSeconds, 60.0);
+    if(_SmoothSecondHand < 0.5) S = floor(S);
+
+    float Ha = HALF_PI - TWO_PI * H / 12.0;
+    float Ma = HALF_PI - TWO_PI * M / 60.0;
+    float Sa = HALF_PI - TWO_PI * S / 60.0;
+
+    float val = value(sdCircle(uv, 0.95), 1.0); // outer ring
+    val = max(val, value(sdSegmentOrigin(uv, 0.6 * unit(Ha)), 1.5));
+    val = max(val, value(sdSegmentOrigin(uv, 0.9 * unit(Ma)), 1.0));
+    val = max(val, value(sdSegmentOrigin(uv, 0.8 * unit(Sa)), 0.7));
+    val = max(val, value(length(uv), 1.5));
+    float3 col = float3(val, val, val);
+
+    return float4(col, 1.0);
+}

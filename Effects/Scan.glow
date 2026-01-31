@@ -1,0 +1,32 @@
+_Duration("Duration", Float) = 10.0
+_Color1("Color 1", Color) = (1.0, 1.0, 1.0, 1.0)
+_Color2("Color 2", Color) = (0.0, 0.0, 0.0, 1.0)
+_NumPatterns("Num Patterns", Range(1.0, 12.0)) = 8.0
+_Progress("Progress", Range(0.0, 1.0)) = 0.0
+_Animated("Animated", Float) = 1
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+
+    float i = frac(_Progress + _Animated * _Time.y / _Duration);
+
+    float p = lerp(uv.x, uv.y, round(i));
+
+    // frac(i*2) exists so that horizontal and vertical patterns start from the same point
+    float floorIteration;
+    float fractIteration = modf(_NumPatterns * frac(i * 2.0), floorIteration);
+
+    // log scale for patterns
+    float s = pow(2.0, floorIteration);
+
+    float t;
+    if(fractIteration > 0.5) // do pattern inverses too
+        t = float(frac(p * s) > 0.5);
+    else
+        t = float(frac(p * s) < 0.5);
+
+    float4 result = lerp(_Color1, _Color2, t);
+
+    return result;
+}

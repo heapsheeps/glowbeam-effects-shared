@@ -1,0 +1,31 @@
+_Duration("Duration", Float) = 10.0
+_Vertical("Vertical", Float) = 1
+_Gradient("Gradient", Float) = 1
+_Angle("Angle", Range(0.0, 1.0)) = 0.0
+
+float2 rotate2D(float2 _st, float _angle)
+{
+    _st -= 0.5;
+    _st = mul(float2x2(cos(_angle), -sin(_angle), sin(_angle), cos(_angle)), _st);
+    _st += 0.5;
+    return _st;
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+
+    uv = rotate2D(uv, PI * _Angle);
+    if(_Gradient > 0.5) uv.y = 1.0 - uv.y;
+
+    int d = int(_Vertical);
+
+    float t = 1.0 - cos(TWO_PI * _Time.y / _Duration);
+
+    float c1 = lerp(0.0, 1.0, step(uv[d] * 0.5, t - 0.11));
+    float c2 = lerp(1.0, 0.0, cos(t + 1.0 - (uv[d] + 0.3)));
+
+    float result = lerp(c1, c2, _Gradient);
+
+    return float4(result, result, result, result);
+}

@@ -1,0 +1,28 @@
+_Duration("Duration", Float) = 10.0
+_PrimaryColor("Primary Color", Vector) = (0.6, 0.7, 0, 0)
+_SecondaryColor("Secondary Color", Vector) = (0.9, 0.8, 0, 0)
+_ScanMix("Scan Mix", Range(0.0, 1.0)) = 1.0
+
+float4 EffectMain()
+{
+    float3 color = SAMPLE_SCAN().rgb;
+    float grey = (color.r + color.g + color.b) / 3.0;
+    color *= _ScanMix;
+
+    float t = TWO_PI * _Time.y / _Duration;
+    float thresh1 = sin(t) * 0.5 + 0.5;
+    float thresh2 = sin(t + 0.1) * 0.5 + 0.5;
+    float thresh3 = sin(t - 0.1) * 0.5 + 0.5;
+
+    float3 thresh3Color = hsv2rgb(float3(_PrimaryColor.xy, 1.0));
+    float3 thresh2Color = hsv2rgb(float3(_SecondaryColor.xy, 1.0));
+    float3 thresh1Color = float3(0.0, 0.0, 0.0);
+
+    float3 result = lerp(color, thresh3Color, step(thresh3, grey - EPSILON));
+    result = lerp(result, thresh2Color, step(thresh2, grey - EPSILON));
+    result = lerp(result, thresh1Color, step(thresh1, grey - EPSILON));
+
+    float alpha = 1.0;
+
+    return float4(result, alpha);
+}

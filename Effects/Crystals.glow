@@ -1,0 +1,32 @@
+_Duration("Duration", Float) = 10.0
+_Zoom("Zoom", Range(0.0, 1.0)) = 0.3
+
+float getCrystalValue(float2 uv, float t, float angle)
+{
+    float w = uv.x * sin(angle) + uv.y * cos(angle);
+    return sin(w + t);
+}
+
+float4 EffectMain()
+{
+    float2 uvAspectMaintained = LocalUV * _ScreenParams.xy / _ScreenParams.yy;
+    float2 uvZoomed = (uvAspectMaintained - 0.5) / (0.2 + _Zoom) * 100.0;
+
+    float t = TWO_PI * _Time.y / _Duration;
+
+    float PI_BY_NUMPOINTS = PI / 7.0;
+    float value =
+        getCrystalValue(uvZoomed, t, 0.0) +
+        getCrystalValue(uvZoomed, t, PI_BY_NUMPOINTS) +
+        getCrystalValue(uvZoomed, t, PI_BY_NUMPOINTS * 2.0) +
+        getCrystalValue(uvZoomed, t, PI_BY_NUMPOINTS * 3.0) +
+        getCrystalValue(uvZoomed, t, PI_BY_NUMPOINTS * 4.0) +
+        getCrystalValue(uvZoomed, t, PI_BY_NUMPOINTS * 5.0) +
+        getCrystalValue(uvZoomed, t, PI_BY_NUMPOINTS * 6.0);
+
+    float result = sin(value * HALF_PI) + 1.0;
+
+    float3 color = result + float3(sin(t), cos(t), sin(t * 0.2));
+
+    return float4(color, 1.0);
+}

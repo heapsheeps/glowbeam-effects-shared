@@ -1,0 +1,64 @@
+_Duration("Duration", Float) = 10.0
+_Noise("Noise", Range(0.0, 1.0)) = 0.5
+_Direction("Direction", Vector) = (0.5, 0.5, 0, 0)
+_Color("Color", Vector) = (0.7, 0.2, 0, 0)
+_UseColor("Use Color", Float) = 1
+
+float HASHSCALE1 = 123.1031;
+
+float hash13(float3 p3)
+{
+    p3 = frac(p3 * HASHSCALE1);
+    p3 += dot(p3, p3.yzx + 19.19);
+    return frac((p3.x + p3.y) * p3.z);
+}
+
+float3x3 lookAt(float3 dir, float3 up)
+{
+    float3 f = normalize(dir);
+    float3 s = normalize(cross(up, f));
+    float3 u = cross(f, s);
+
+    float3x3 m;
+    m[0][0] = s.x;
+    m[1][0] = s.y;
+    m[2][0] = s.z;
+    m[0][1] = u.x;
+    m[1][1] = u.y;
+    m[2][1] = u.z;
+    m[0][2] = f.x;
+    m[1][2] = f.y;
+    m[2][2] = f.z;
+
+    return m;
+}
+
+float3 pal(float t, float3 a, float3 b, float3 c, float3 d)
+{
+    return a + b * cos(6.28318 * (c * t + d));
+}
+
+float4 EffectMain()
+{
+    float2 uv = GlobalUV;
+
+    float3 direction3d = float3(_Direction.xy * 2.0 - 1.0, 1.0);
+
+    float depth = SAMPLE_DEPTH().r;
+    float3x3 xf = lookAt(direction3d, float3(0.0, 1.0, 0.0));
+    float3 pos = mul(xf, float3(uv, depth));
+
+    float t = _Time.y / _Duration;
+    float v = 1.0 - frac((1.0 - pos.z * 0.75) + t);
+    v = pow(v, 5.0);
+    // Add some noise to mask the limited depth resolution
+    v -= hash13(float3(uv, _Time.y)) * 0.5 * _Noise;
+
+    float3 resultColored = pal(v, float3(0.5, 0.5, 0.5), float3(0.5, 0.5, 0.5), float3(1.0, 1.0, 0.5), float3(_Color.xy, 0.30));
+    float3 resultGrey = float3(v, v, v);
+    float3 result = lerp(resultGrey, resultColored, _UseColor);
+
+    float alpha = 1.0;
+
+    return float4(result, alpha);
+}

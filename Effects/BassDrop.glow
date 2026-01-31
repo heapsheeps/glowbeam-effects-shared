@@ -1,0 +1,61 @@
+_Duration("Duration", Float) = 10.0
+_Amplitude("Amplitude", Range(0.0, 1.0)) = 0.3
+_Zoom("Zoom", Range(0.0, 1.0)) = 0.1
+_Blend("Blend", Range(0.0, 1.0)) = 0.0
+_Angle("Angle", Range(0.0, 1.0)) = 0.0
+_Center("Center", Vector) = (0.5, 0.5, 0, 0)
+
+static const float randSeed = PI;
+
+float LinearTween(float t, float start, float end)
+{
+    return t * start + (1.0 - t) * end;
+}
+
+float quadraticEaseIn(float t, float start, float end)
+{
+    return LinearTween(t * t, start, end);
+}
+
+float quadraticEaseInOut(float t, float start, float end)
+{
+    float middle = (start + end) / 2.0;
+    t = 2.0 * t;
+    if(t <= 1.0)
+        return LinearTween(t * t, start, middle);
+    t -= 1.0;
+    return LinearTween(t * t, middle, end);
+}
+
+float4 RadialWiggle(float2 uv, float progress)
+{
+    float2 center = _Center.xy;
+    float2 toUV = uv - center;
+    float centerDist = length(toUV);
+    float2 normToUV = toUV / centerDist;
+    float angle = (atan2(normToUV.y, normToUV.x) + PI) / (_Angle * PI);
+
+    float pos = frac(progress / 3.0 + centerDist / ((_Amplitude + 0.1) * 10.0) + randSeed);
+
+    float off1 = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, float2(angle, pos)).x * 2.0 - 1.0;
+
+    float off2 = off1 * 2.0 * min(_Zoom + _Blend, (1.0 - progress)) * centerDist;
+    off1 *= 2.0 * min(_Zoom, progress) * centerDist;
+
+    float3 c1 = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, frac(center + normToUV * (centerDist + off1))).rgb;
+    float3 c2 = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, frac(center + normToUV * (centerDist + off2))).rgb;
+
+    float alpha = 1.0;
+
+    return float4(lerp(c1, c2, progress), alpha);
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+
+    float progress = frac(_Time.y / _Duration);
+    progress = quadraticEaseIn(progress, 0.0, 1.0);
+
+    return RadialWiggle(uv, progress);
+}

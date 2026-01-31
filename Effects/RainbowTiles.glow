@@ -1,0 +1,42 @@
+_Duration("Duration", Float) = 10.0
+_Zoom("Zoom", Range(0.0, 1.0)) = 0.5
+_Glitch("Glitch", Float) = 0
+
+float rand(float n)
+{
+    return frac(sin(n) * 43758.5453123);
+}
+
+float2 brickTile(float2 _st, float _zoom)
+{
+    float t = _Time.y / _Duration;
+    _st *= _zoom + lerp(0.0, rand(t * 0.0001), _Glitch);
+
+    // Here is where the offset is happening
+    _st.y += step(1.0, fmod(_st.x, 2.0)) * t;
+    _st.y += step(1.0, fmod(_st.y + 1.0, 2.0)) * -t;
+
+    return frac(_st);
+}
+
+float box(float2 _st, float2 _size)
+{
+    _size = float2(0.5, 0.5) - _size * 0.5;
+    float2 uv = smoothstep(_size, _size + float2(1e-4, 1e-4), _st);
+    uv *= smoothstep(_size, _size + float2(1e-4, 1e-4), float2(1.0, 1.0) - _st);
+    return uv.x * uv.y;
+}
+
+float4 EffectMain()
+{
+    float2 st = GlobalUV * _ScreenParams.xy / _ScreenParams.yy;
+    float3 color = float3(0.0, 0.0, 0.0);
+
+    float z = _Zoom * 10.0;
+    st = brickTile(st, z);
+
+    color = float3(box(st, float2(0.9, 0.9)), box(st, float2(0.9, 0.9)), box(st, float2(0.9, 0.9)));
+    color = float3(atan(st.x), cos(st.x + st.y), atan(st.x + st.y));
+
+    return float4(color, 1.0);
+}

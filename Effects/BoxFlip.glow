@@ -1,0 +1,62 @@
+_Duration("Duration", Float) = 10.0
+_GridSize("Grid Size", Range(0.0, 1.0)) = 0.5
+
+float2 plane(float3 p, float3 d, float3 normal)
+{
+    float3 up = float3(0, 1, 0);
+    float3 right = cross(up, normal);
+
+    float dn = dot(d, normal);
+    float pn = dot(p, normal);
+
+    float3 hit = p - d / dn * pn;
+
+    float2 uv;
+    uv.x = dot(hit, right);
+    uv.y = dot(hit, up);
+
+    return uv;
+}
+
+float4 EffectMain()
+{
+    float2 xy = GlobalUV * _ScreenParams.xy - _ScreenParams.xy / 2.0;
+    float grid_width = 64.0 * (12.0 * _GridSize);
+    xy /= grid_width;
+    float2 grid = floor(xy);
+    xy = fmod(xy, 1.0) - 0.5;
+
+    float alpha = 0.0;
+    float time = _Time.y - (grid.y - grid.x) * 0.1;
+    time = fmod(time, _Duration);
+    alpha += smoothstep(0.0, 1.0, time);
+    alpha += 1.0 - smoothstep(3.0, 4.0, time);
+    alpha = abs(fmod(alpha, 2.0) - 1.0);
+
+    float side = step(0.5, alpha);
+
+    alpha = radians(alpha * 180.0);
+    float4 n = float4(cos(alpha), 0, sin(alpha), -sin(alpha));
+    float3 d = float3(1.0, xy.y, xy.x);
+    float3 p = float3(-1.0 + n.w / 4.0, 0, 0);
+    float2 uv = plane(p, d, n.xyz);
+
+    float4 result;
+    uv += 0.5;
+    if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0)
+    {
+        result = float4(0.0, 0.0, 0.0, 0.0);
+    }
+    else
+    {
+        float2 guv = grid * grid_width / _ScreenParams.xy + 0.5;
+        float2 scale = float2(grid_width, grid_width) / _ScreenParams.xy;
+
+        float4 c1 = float4(SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, guv + float2(1.0 - uv.x, uv.y) * scale).rgb, 1.0);
+        float4 c2 = float4(SAMPLE_TEXTURE2D(_RgbCartoonized, sampler_RgbCartoonized, guv + float2(uv.x, uv.y) * scale).rgb, 1.0);
+
+        result = lerp(c1, c2, side);
+    }
+
+    return result;
+}

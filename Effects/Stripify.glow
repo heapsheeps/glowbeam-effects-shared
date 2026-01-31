@@ -1,0 +1,28 @@
+_Duration("Duration", Float) = 10.0
+_DistortionAmplitude("Distortion Amplitude", Range(0.0, 1.0)) = 0.25
+_LineDistance("Line Distance", Range(0.0, 1.0)) = 0.65
+_Dispersion("Dispersion", Range(0.0, 1.0)) = 0.4
+_LineWiggle("Line Wiggle", Range(0.0, 1.0)) = 0.0
+
+float4 EffectMain()
+{
+    float L = 40.0 * _LineDistance;
+    float A = 10.0 * _DistortionAmplitude;
+    float t = _Time.y / _Duration;
+    t = frac(t);
+    float4 color = float4(1.0, 1.0, 1.0, 1.0);
+
+    float2 uv = GlobalUV * _ScreenParams.xy;
+    uv /= L;
+    float y = floor(uv.y + 0.5 + t) - t + _LineWiggle * sin(uv.x);
+    float2 p = float2(uv.x, y) / _ScreenParams.xy;
+
+    float3 sampleTex = SAMPLE_TEXTURE2D(_RgbCartoonized, sampler_RgbCartoonized, L * p).rgb;
+
+    float saturation = rgbToHsv(sampleTex.xyz).y;
+    saturation = step(_Dispersion, saturation);
+
+    color.rgb += cos(2.0 * PI * (uv.y - y) + A * saturation * (2.0 * sampleTex.rgb - 1.0)) - 1.0;
+    color.a = 1.0;
+    return color;
+}

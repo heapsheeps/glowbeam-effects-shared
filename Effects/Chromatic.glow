@@ -1,0 +1,40 @@
+_Duration("Duration", Float) = 10.0
+_Strip("Strip", Range(0.0, 1.0)) = 0.5
+_GlitchAmount("Glitch Amount", Range(0.0, 1.0)) = 0.5
+_Direction("Direction", Vector) = (0.6, 0.6, 0, 0)
+_GlitchRed("Glitch Red", Float) = 1
+_GlitchGreen("Glitch Green", Float) = 0
+_GlitchBlue("Glitch Blue", Float) = 0
+_ScanMix("Scan Mix", Range(0.0, 1.0)) = 1.0
+
+float rand(float n)
+{
+    return frac(sin(n) * 43758.5453123);
+}
+
+float getLoopingTimeValue()
+{
+    float t = _Time.y * TWO_PI / _Duration;
+    return (sin(t) + 1.0) / 2.0;
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+
+    float s = _Strip + rand(_Time.y) * _GlitchAmount;
+    float flipDirection = (fmod(uv.y, s) <= (s / 2.0) ? 1.0 : -1.0);
+
+    float2 directionRemapped = _Direction.xy * 0.1 - 0.05;
+    float2 offsetUV = uv + getLoopingTimeValue() * flipDirection * directionRemapped;
+
+    float3 thisPixel = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv).rgb;
+    float3 offsetPixel = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, offsetUV).rgb;
+
+    float3 color = lerp(thisPixel, offsetPixel, float3(_GlitchRed, _GlitchGreen, _GlitchBlue));
+    color -= (1.0 - _ScanMix) * thisPixel;
+
+    float alpha = 1.0;
+
+    return float4(color, alpha);
+}

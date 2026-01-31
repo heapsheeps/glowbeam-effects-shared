@@ -1,0 +1,28 @@
+_Duration("Duration", Float) = 10.0
+_Direction("Direction", Vector) = (0.5, 0.5, 0, 0)
+_Cartoonized("Cartoonized", Float) = 1
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+
+    float t = TWO_PI * _Time.y / _Duration;
+    float th = sin(t) / 1.5 + 0.33;
+    float3 tex1 = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv).rgb;
+    float gray = tex1.r;
+    float tex = ((gray - 0.5) + 2.0 * sqrt(pow(_Direction.y - uv.y, 2.0) + pow(_Direction.x - uv.x, 2.0))) / 3.0;
+    float mask = smoothstep(th - 0.1, th, tex);
+    float dist = smoothstep(th - 0.3, th + 0.05, tex);
+    float col = pow(smoothstep(th - 0.2, th + 0.15, tex), 3.0);
+
+    float3 color;
+
+    if(_Cartoonized > 0.5)
+        color = SAMPLE_TEXTURE2D(_RgbCartoonized, sampler_RgbCartoonized, uv * (0.7 + pow(dist, 2.0) * 0.3)).rgb;
+    else
+        color = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv * (0.7 + pow(dist, 2.0) * 0.3)).rgb;
+
+    float3 discolor = color * float3(0.9, 0.5, 0.3);
+
+    return float4(lerp(discolor, color, col) * mask, mask);
+}

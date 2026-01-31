@@ -1,0 +1,92 @@
+_Duration("Duration", Float) = 10.0
+_VignetteRadius("Vignette Radius", Range(0.0, 2.0)) = 0.75
+_VignetteSoftness("Vignette Softness", Range(0.0, 2.0)) = 0.45
+_VignetteOpacity("Vignette Opacity", Range(0.0, 1.0)) = 0.8
+_ToneOpacity("Tone Opacity", Range(0.0, 2.0)) = 0.75
+_ToneColor("Tone Color", Color) = (1.0, 0.83, 0.66, 1.0)
+_ToneGain("Tone Gain", Range(0.0, 2.0)) = 1.5
+_ScreenFlickerIntensity("Screen Flicker Intensity", Range(0.0, 1.0)) = 0.02
+_NoiseGain("Noise Gain", Range(0.0, 1.0)) = 0.1
+_Scratches("Scratches", Range(0.0, 1.0)) = 0.3
+
+// Simple perlin noise approximation
+float perlin_noise2(float2 p)
+{
+    float2 i = floor(p);
+    float2 f = frac(p);
+    f = f * f * (3.0 - 2.0 * f);
+
+    float a = rand(i);
+    float b = rand(i + float2(1.0, 0.0));
+    float c = rand(i + float2(0.0, 1.0));
+    float d = rand(i + float2(1.0, 1.0));
+
+    return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+    float timeFrequency = _Time.y / _Duration;
+    float progressAngle = TWO_PI * timeFrequency;
+
+    // sample our texture
+    float4 texColor = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv);
+
+    // 1. VIGNETTE
+
+    // determine center position
+    float2 position = uv - float2(0.5, 0.5);
+
+    // determine the vector length of the center position
+    float len = length(position);
+
+    // use smoothstep to create a smooth vignette
+    float vignette = smoothstep(_VignetteRadius, _VignetteRadius - _VignetteSoftness, len);
+
+    // apply the vignette with opacity
+    texColor.rgb = lerp(texColor.rgb, texColor.rgb * vignette, _VignetteOpacity);
+
+    // 2. GRAYSCALE
+
+    // convert to grayscale using NTSC conversion weights
+    float luminance = dot(texColor.rgb, float3(0.299, 0.587, 0.114));
+
+    // 3. SEPIA
+
+    // create our sepia tone from some constant value
+    float3 sepiaColor = luminance * _ToneColor.rgb * _ToneGain;
+
+    // use mix so that the sepia effect is at specified opacity
+    texColor.rgb = lerp(texColor.rgb, sepiaColor, _ToneOpacity);
+
+    // 4. SCREEN FLICKER
+    texColor.rgb += _ScreenFlickerIntensity * sin(2.0 * progressAngle);
+
+    // 5. PEPPER-SALT NOISE
+    float noise = rand(uv + floor(3.0 * fmod(_Time.y, _Duration)));
+
+    texColor.rgb += float3(noise * _NoiseGain, noise * _NoiseGain, noise * _NoiseGain);
+
+    // 6. Apply scratches
+    float scratchSeed = rand(_Time.y);
+    if (scratchSeed <= _Scratches) {
+        // Pick a random spot to show scratches
+        float dist = 1.0 / _Scratches;
+        float d = distance(uv, float2(scratchSeed * dist, scratchSeed * dist));
+        if (d < _Scratches) {
+            // Generate the scratch
+            float xPeriod = 8.0;
+            float yPeriod = 1.0;
+            float turbulence = perlin_noise2(uv * 2.5 + scratchSeed);
+            float angle = (uv.x * xPeriod + uv.y * yPeriod + turbulence) * TWO_PI;
+            float value = sin(angle) * 0.5 + 0.5;
+            value = saturate(value * 10000.0 + 0.25);
+
+            texColor.rgb *= value;
+        }
+    }
+
+    // final colour
+    return texColor;
+}

@@ -1,0 +1,50 @@
+_Duration("Duration", Float) = 10.0
+_Saturation("Saturation", Range(0.0, 1.0)) = 0.25
+_SkyColor("Sky Color", Color) = (0.3, 0.5, 1.0, 1.0)
+
+float3 mie(float dist, float3 sunL)
+{
+    return max(exp(-pow(dist, 0.25)) * sunL - 0.4, 0.0);
+}
+
+float3 getSky(float2 uv)
+{
+    float t = TWO_PI * _Time.y / _Duration;
+    float2 sunPos = float2(0.5, cos(t + PI));
+
+    float sunDistance = distance(uv, clamp(sunPos, -1.0, 1.0));
+
+    float scatterMult = clamp(sunDistance, 0.0, 1.0);
+    float sun = clamp(1.0 - smoothstep(0.01, 0.011, scatterMult), 0.0, 1.0);
+
+    float dist = uv.y;
+    dist = (_Saturation * lerp(scatterMult, 1.0, dist)) / dist;
+
+    float3 mieScatter = mie(sunDistance, float3(1.0, 1.0, 1.0));
+
+    float3 color = dist * _SkyColor.xyz;
+
+    color = max(color, 0.0);
+
+    color = max(lerp(pow(color, 1.0 - color),
+        color / (2.0 * color + 0.5 - color),
+        clamp(sunPos.y * 2.0, 0.0, 1.0)), 0.0)
+        + mieScatter;
+
+    color *= (pow(1.0 - scatterMult, 10.0) * 10.0) + 1.0;
+
+    float underscatter = distance(sunPos.y * 0.5 + 0.5, 1.0);
+
+    color = lerp(color, float3(0.0, 0.0, 0.0), clamp(underscatter, 0.0, 1.0));
+
+    return color;
+}
+
+float4 EffectMain()
+{
+    float2 uv = GlobalUV * _ScreenParams.xy / _ScreenParams.xx;
+    float3 color = getSky(uv);
+    color = color / (2.0 * color + 0.5 - color);
+    float alpha = _SkyColor.a;
+    return float4(color, alpha);
+}

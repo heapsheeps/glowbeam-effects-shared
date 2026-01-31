@@ -1,0 +1,48 @@
+_Duration("Duration", Float) = 10.0
+_LightDistanceOffSurface("Light Distance Off Surface", Range(0.0, 0.5)) = 0.1
+_LightPosition("Light Position", Vector) = (0.5, 0.5, 0, 0)
+_AnimationRange("Animation Range", Range(0.0, 1.0)) = 0.5
+_UseColor("Use Color", Float) = 1
+
+float3 directionFromPoint(float2 pt)
+{
+    float2 xy = pt * 2.0 - 1.0;
+    float z = sqrt(1.0 - min(length(xy), 1.0));
+    return normalize(float3(xy, z));
+}
+
+float3 uncompressNormal(float3 normalCompressed)
+{
+    return normalize(float3(normalCompressed.xy * 2.0 - 1.0, normalCompressed.z));
+}
+
+float2 uvTo3dDomain(float2 uv)
+{
+    return float2(uv.x * _ScreenParams.x / _ScreenParams.y, uv.y);
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+
+    float disparity = SAMPLE_TEXTURE2D(_DepthTex, sampler_DepthTex, uv).r;
+    float3 normal = uncompressNormal(SAMPLE_TEXTURE2D(_Normals, sampler_Normals, uv).rgb);
+
+    float3 surfacePoint = float3(uvTo3dDomain(uv), 1.0 - disparity);
+
+    float t = TWO_PI * _Time.y / _Duration;
+
+    float2 lightPos2d = _LightPosition.xy + _AnimationRange * float2(cos(t), sin(t * 2.0)) / 2.0;
+
+    float3 lightPoint = float3(uvTo3dDomain(lightPos2d), surfacePoint.z + _LightDistanceOffSurface);
+    float3 lightDirection = lightPoint - surfacePoint;
+    float lightDistanceFalloff = length(lightDirection);
+    float lightDistanceFalloffFactor = 0.4 / lightDistanceFalloff;
+
+    float diffuseComponent = max(dot(normalize(lightDirection), normal), 0.0) * lightDistanceFalloffFactor;
+
+    float3 color = _UseColor > 0.5 ? SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv).rgb : float3(1.0, 1.0, 1.0);
+    float3 shaded = diffuseComponent * color;
+
+    return float4(shaded, 1.0);
+}

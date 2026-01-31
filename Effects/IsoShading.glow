@@ -1,0 +1,51 @@
+_Duration("Duration", Float) = 10.0
+_IsoValue("Iso Value", Range(0.0, 1.0)) = 0.5
+_IsoValueRadius("Iso Value Radius", Range(0.0, 1.0)) = 0.2
+_LightDirection("Light Direction", Vector) = (0.5, 0.5, 0, 0)
+_UseColor("Use Color", Float) = 1
+_AnimateIsoValue("Animate Iso Value", Float) = 1
+
+float getLoopingTimeValue()
+{
+    float t = TWO_PI * _Time.y / _Duration;
+    return (sin(t) + 1.0) / 2.0;
+}
+
+float3 directionFromPoint(float2 pt)
+{
+    float2 xy = pt * 2.0 - 1.0;
+    float z = sqrt(1.0 - min(length(xy), 1.0));
+    return normalize(float3(xy, z));
+}
+
+float isInRange(float x, float minValue, float maxValue)
+{
+    return step(minValue, x) - step(maxValue, x);
+}
+
+float3 uncompressNormal(float3 normalCompressed)
+{
+    return normalize(float3(normalCompressed.xy * 2.0 - 1.0, normalCompressed.z));
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+
+    float3 normal = uncompressNormal(SAMPLE_TEXTURE2D(_Normals, sampler_Normals, uv).rgb);
+
+    float3 light = directionFromPoint(_LightDirection.xy);
+    float diffuseComponent = max(dot(light, normal), 0.0);
+
+    float isoValueRadiusRemapped = _IsoValueRadius * 0.19 + 0.01;
+
+    float iso = lerp(_IsoValue, getLoopingTimeValue(), _AnimateIsoValue);
+
+    float3 color = _UseColor > 0.5 ? SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv).rgb : float3(1.0, 1.0, 1.0);
+
+    float mask = isInRange(diffuseComponent, iso - isoValueRadiusRemapped, iso + isoValueRadiusRemapped);
+
+    float3 shaded = diffuseComponent * color * mask;
+
+    return float4(shaded, 1.0);
+}

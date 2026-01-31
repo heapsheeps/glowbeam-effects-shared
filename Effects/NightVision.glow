@@ -1,0 +1,36 @@
+_Duration("Duration", Float) = 10.0
+_EffectTone("Effect Tone", Color) = (0.0, 1.0, 0.0, 1.0)
+_ScanlinesIntensity("Scanlines Intensity", Range(0.0, 1.0)) = 0.1
+_ScanlinesHeight("Scanlines Height", Range(1.0, 10.0)) = 1.5
+_ScreenFlickerIntensity("Screen Flicker Intensity", Range(0.0, 1.0)) = 0.5
+_ScreenFlickerSpeed("Screen Flicker Speed", Range(0.0, 1.0)) = 0.25
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+    float timeFrequency = _Time.y / _Duration;
+
+    float4 color = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv);
+
+    // luminance hack, responds to red channel most
+    float luminance = dot(color.rgb, float3(0.299, 0.587, 0.114));
+
+    // display only the green
+    color.rgb = _EffectTone.rgb * luminance;
+
+    // scanlines
+    color += _ScanlinesIntensity * sin(uv.y * _ScreenParams.y / _ScanlinesHeight);
+
+    // screen flicker
+    color += 0.1 * _ScreenFlickerIntensity * sin(TWO_PI * timeFrequency * round(100.0 * _ScreenFlickerSpeed));
+
+    // compute vignette
+    float vignetteAmount;
+    float distanceFromCenter = length(uv - float2(0.5, 0.5));
+    vignetteAmount = 1.0 - distanceFromCenter;
+    vignetteAmount = smoothstep(0.1, 1.0, vignetteAmount);
+
+    // vignetting
+    color.rgb = lerp(color.rgb, color.rgb * vignetteAmount, 0.5);
+    return color;
+}

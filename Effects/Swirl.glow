@@ -1,0 +1,52 @@
+_Duration("Duration", Float) = 10.0
+_Radius("Radius", Range(0.0, 1.0)) = 0.2
+_Angle("Angle", Range(0.0, 1.0)) = 0.5
+_AnimationRadius("Animation Radius", Range(0.0, 1.0)) = 0.1
+_Center("Center", Vector) = (0.5, 0.5, 0, 0)
+_AnimateCenter("Animate Center", Float) = 0
+_ColorCorrect("Color Correct", Float) = 0
+
+float2 rotate(float2 p, float a)
+{
+    return float2(p.x * cos(a) - p.y * sin(a), p.x * sin(a) + p.y * cos(a));
+}
+
+float2 swirl(float2 uv, float2 center, float radius, float angle)
+{
+    float2 tc = uv - center;
+    float dist = distance(uv, center);
+
+    if(dist < radius)
+    {
+        float percent = (radius - dist) / radius;
+        float theta = percent * percent * (angle * 10.0);
+        float s = sin(theta);
+        float c = cos(theta);
+        tc = float2(dot(tc, float2(c, -s)), dot(tc, float2(s, c)));
+    }
+
+    tc += center;
+    return tc;
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+
+    float animation_angle = TWO_PI * _Time.y / _Duration;
+    float t = _AnimateCenter > 0.5 ? 1.0 : abs(sin(animation_angle));
+    float2 c = _Center.xy;
+
+    c += _AnimateCenter > 0.5 ? float2(sin(animation_angle), cos(animation_angle)) * _AnimationRadius * 0.5 : float2(0.0, 0.0);
+
+    float2 s = swirl(uv, c, _Radius * t, _Angle * t);
+
+    float3 color = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, s).rgb;
+
+    if (_ColorCorrect > 0.5)
+    {
+        color -= SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, uv).rgb * 0.5;
+    }
+
+    return float4(color, 1.0);
+}

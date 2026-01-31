@@ -1,0 +1,16 @@
+_Duration("Duration", Float) = 10.0
+
+float4 EffectMain()
+{
+    float2 u = LocalUV;
+    float2 h = u - 0.5;
+    h.x *= 1.8;
+    float t = TWO_PI * _Time.y / _Duration;
+    float s = clamp(sin(t), 0.1, 0.9);
+    float c = sin(u.x * 99.0);
+    c += lerp(cos(u.y * 50.0 + t * 0.2), c, s);
+    c *= lerp(cos(c + dot(h, h) * 0.7 + t * 0.2), c, clamp(cos(t * 0.8), 0.1, 0.5));
+    c *= lerp(sin(dot(h, h)), c, s * s);
+    c = pow(c, 0.8);
+    return float4(c, c, c, c);
+}

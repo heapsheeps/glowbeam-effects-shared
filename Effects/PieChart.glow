@@ -1,0 +1,105 @@
+_Radius("Radius", Range(0.0, 1.0)) = 0.5
+_Segments("Segments", Int) = 5
+_Value0("Value 0", Range(0.0, 1.0)) = 0.5
+_Value1("Value 1", Range(0.0, 1.0)) = 0.5
+_Value2("Value 2", Range(0.0, 1.0)) = 0.5
+_Value3("Value 3", Range(0.0, 1.0)) = 0.5
+_Value4("Value 4", Range(0.0, 1.0)) = 0.5
+_Value5("Value 5", Range(0.0, 1.0)) = 0.5
+_Value6("Value 6", Range(0.0, 1.0)) = 0.5
+_Value7("Value 7", Range(0.0, 1.0)) = 0.5
+_Value8("Value 8", Range(0.0, 1.0)) = 0.5
+_Value9("Value 9", Range(0.0, 1.0)) = 0.5
+
+static const float3 A = float3(0.5, 0.5, 0.5);
+static const float3 B = float3(0.5, 0.5, 0.5);
+static const float3 C = float3(1.0, 1.0, 1.0);
+static const float3 D = float3(0.00, 0.33, 0.67);
+
+float3 palette(float t, float3 a, float3 b, float3 c, float3 d)
+{
+    return a + b * cos(TWO_PI * (c * t + d));
+}
+
+float2 rotate(float2 p, float a)
+{
+    float2 cs = float2(cos(a), sin(a));
+    return float2(dot(cs, p), cs.x * p.y - cs.y * p.x);
+}
+
+float sdSegmentOrigin(float2 p, float2 b)
+{
+    float h = saturate(dot(p, b) / dot(b, b));
+    return length(p - h * b);
+}
+
+float sdCircle(float2 p, float r)
+{
+    return length(p) - r;
+}
+
+float sdPie(float2 _p, float a0, float a1, float r)
+{
+    float b = (a1 - a0) / 2.0;
+    float2 p = rotate(_p, b + a0);
+    float2 c = float2(cos(b), sin(b));
+    p.y = abs(p.y);
+    float l = length(p) - r;
+    float m = length(p - c * saturate(dot(p, c) / r) * r);
+    return max(l, -m * sign(c.y * p.x - c.x * p.y));
+}
+
+float4 EffectMain()
+{
+    float2 uv = (LocalUV * 2.0 - 1.0);
+    uv.x *= _ScreenParams.x / _ScreenParams.y;
+    float4 col = float4(0.0, 0.0, 0.0, 0.0);
+    float outline = sdCircle(uv, _Radius);
+
+    if(outline < 0.01) {
+        float angle = 0.0;
+        float vals[10];
+        vals[0] = _Value0;
+        vals[1] = _Value1;
+        vals[2] = _Value2;
+        vals[3] = _Value3;
+        vals[4] = _Value4;
+        vals[5] = _Value5;
+        vals[6] = _Value6;
+        vals[7] = _Value7;
+        vals[8] = _Value8;
+        vals[9] = _Value9;
+
+        float sum = 0.0;
+        outline = abs(outline);
+
+        for(int i = 0; i < _Segments; ++i)
+        {
+            sum += vals[i];
+        }
+
+        for(int i = 0; i < _Segments; ++i)
+        {
+            vals[i] /= sum;
+        }
+
+        for(int i = 0; i < _Segments; ++i)
+        {
+            if(vals[i] > 0.0)
+            {
+                float angle_next = angle + TWO_PI * vals[i];
+                if(vals[i] < 0.999)
+                    outline = min(outline, sdSegmentOrigin(uv, _Radius * float2(cos(angle_next), sin(angle_next))));
+                float d = sdPie(uv, angle, angle_next, _Radius);
+                angle = angle_next;
+                if(d < 0.0) {
+                    col.xyz = palette(float(i) / float(_Segments), A, B, C, D);
+                    col.a = 1.0;
+                }
+            }
+        }
+    }
+
+    col = lerp(col, float4(1.0, 1.0, 1.0, 1.0), 1.0 - smoothstep(0.0, 0.009, abs(outline)));
+    return col;
+}

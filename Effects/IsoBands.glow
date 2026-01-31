@@ -1,0 +1,58 @@
+_Duration("Duration", Float) = 10.0
+_Center("Center", Vector) = (0.5, 0.5, 0, 0)
+_BasisType("Basis Type", Int) = 0
+_UseColor("Use Color", Float) = 1
+_Bands("Bands", Range(0.0, 1.0)) = 0.5
+_IsoValue("Iso Value", Range(0.0, 1.0)) = 0.5
+_IsoValueRadius("Iso Value Radius", Range(0.0, 1.0)) = 0.5
+
+float2 uvTo3dDomain(float2 uv)
+{
+    return float2(uv.x * _ScreenParams.x / _ScreenParams.y, uv.y);
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+
+    float3 toon = SAMPLE_RGB_CARTOONIZED().rgb;
+
+    float3 pt = float3(uvTo3dDomain(uv), 0.0);
+
+    // Select texture based on basis type
+    if(_BasisType == 0)
+    {
+        pt.z = SAMPLE_DEPTH().r;
+    }
+    else if(_BasisType == 1)
+    {
+        pt.z = SAMPLE_EDGE_DISTANCE().r;
+    }
+    else if(_BasisType == 2)
+    {
+        pt.z = SAMPLE_EDGE_TRACE().r;
+    }
+    else if(_BasisType == 3)
+    {
+        pt.z = (toon.r + toon.g + toon.b) / 3.0;
+    }
+    else
+    {
+        pt.z = SAMPLE_NORMALS().x;
+    }
+
+    float3 goalPt = float3(uvTo3dDomain(_Center.xy), 0.5);
+
+    float dist = pow(distance(pt, goalPt), 2.0);
+
+    float isoValueRadiusMapped = _IsoValueRadius * 4.75 + 0.25;
+    float bandsMapped = _Bands * 100.0;
+
+    float t = TWO_PI * _Time.y / _Duration;
+    t /= bandsMapped;
+    float bandingMask = saturate(sin((dist + t + _IsoValue) * bandsMapped) * isoValueRadiusMapped + 0.5);
+
+    float3 color = bandingMask * lerp(float3(1.0, 1.0, 1.0), toon, _UseColor);
+
+    return float4(color, 1.0);
+}

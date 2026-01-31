@@ -1,0 +1,40 @@
+_Duration("Duration", Float) = 10.0
+_Amplitude("Amplitude", Range(0.0, 1.0)) = 0.5
+_Range("Range", Range(0.0, 1.0)) = 0.4
+_Center("Center", Vector) = (0.5, 0.5, 0, 0)
+_Shockwave("Shockwave", Float) = 1
+
+float ripple(float x, float freq, float speed, float range)
+{
+    float t = TWO_PI * _Time.y / _Duration;
+    return sin(freq * x + t * (speed * 4.0)) * (range * 0.01);
+}
+
+float2 getWave(float2 uv)
+{
+    float r = 0.2 + _Range;
+    float2 centerPos = 2.0 * _Center.xy - 1.0;
+
+    if (_Shockwave > 0.5)
+    {
+        float2 center = 2.0 * uv - 1.0 - centerPos;
+        float dist = length(center);
+        float2 direction = (center / dist);
+        float phaseShift = dist * _Amplitude * 30.0;
+        return uv + direction * ripple(1.0, phaseShift, -1.0, r);
+    }
+    else
+    {
+        float xoffset = ripple(uv.x, (_Amplitude * 100.0), 1.0, r);
+        float yoffset = ripple(uv.y, (_Amplitude * 100.0), 1.0, r);
+        return float2(uv.x + xoffset, uv.y + yoffset);
+    }
+}
+
+float4 EffectMain()
+{
+    float2 uv = LocalUV;
+    float2 wave = getWave(uv);
+    float3 color = SAMPLE_TEXTURE2D(_ScanTex, sampler_ScanTex, wave).rgb;
+    return float4(color, 1.0);
+}

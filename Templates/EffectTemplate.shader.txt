@@ -35,7 +35,7 @@ Shader "Glowbeam/Effects/MyEffect"
         [Enum(UnityEngine.Rendering.BlendOp)]   _BlendOp ("Blend Op",   Int) = 0
 
         // Advanced blend mode selector (used only when ADV_BLEND is enabled)
-        [KeywordEnum(None,0, Overlay,1, SoftLight,2, HardLight,3, ColorDodge,4, ColorBurn,5, LinearLight,6, VividLight,7, PinLight,8, HardMix,9, Difference,10, Exclusion,11)]
+        [KeywordEnum(None, Overlay, SoftLight, HardLight, ColorDodge, ColorBurn, LinearLight, VividLight, PinLight, HardMix, Difference, Exclusion)]
         _AdvBlendMode ("Advanced Blend Mode", Float) = 0
     }
 
